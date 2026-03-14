@@ -10,7 +10,7 @@ import { useHydrated } from "@/lib/hooks/useHydrated";
 export default function LeaderboardPage() {
   const hydrated = useHydrated();
   const [activeMode, setActiveMode] = useState<GameMode>("classic");
-  const leaderboards = useProgressionStore((s) => s.leaderboards);
+  const leaderboards = useProgressionStore((s) => s.leaderboards ?? {});
 
   const mode = MODES.find((m) => m.id === activeMode);
   if (!mode) return null;

@@ -20,9 +20,9 @@ const RANK_ICONS: Record<string, string> = {
 export default function StatsPage() {
   const hydrated = useHydrated();
   const totalGamesPlayed = useProgressionStore((s) => s.totalGamesPlayed);
-  const leaderboards = useProgressionStore((s) => s.leaderboards);
-  const history = useProgressionStore((s) => s.history);
-  const streaks = useProgressionStore((s) => s.streaks);
+  const leaderboards = useProgressionStore((s) => s.leaderboards ?? {});
+  const history = useProgressionStore((s) => s.history ?? {});
+  const streaks = useProgressionStore((s) => s.streaks ?? {});
 
   const rank = getRankForGames(totalGamesPlayed);
   const nextRank = getNextRank(totalGamesPlayed);

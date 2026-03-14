@@ -48,7 +48,7 @@ export default function GameShell({ mode, children }: GameShellProps) {
   const completedRef = useRef(false);
   const initializedRef = useRef(false);
   const recordResult = useProgressionStore((s) => s.recordResult);
-  const modeHistory = useProgressionStore((s) => s.history[mode.id] ?? []);
+  const modeHistory = useProgressionStore((s) => (s.history ?? {})[mode.id] ?? []);
   const markDailyCompleted = useDailyChallengeStore((s) => s.markCompleted);
 
   // Set initial phase after mount to avoid hydration issues with persist stores

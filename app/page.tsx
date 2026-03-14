@@ -30,22 +30,21 @@ export default function Home() {
   const hydrated = useHydrated();
   const router = useRouter();
   const totalGamesPlayed = useProgressionStore((s) => s.totalGamesPlayed);
-  const leaderboards = useProgressionStore((s) => s.leaderboards);
+  const leaderboards = useProgressionStore((s) => s.leaderboards ?? {});
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
   const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
   const toggleSound = useSettingsStore((s) => s.toggleSound);
   const toggleHaptics = useSettingsStore((s) => s.toggleHaptics);
   const hasCompletedFirstGame = useOnboardingStore((s) => s.hasCompletedFirstGame);
-  const completedDates = useDailyChallengeStore((s) => s.completedDates);
+  const completedDates = useDailyChallengeStore((s) => s.completedDates ?? []);
   const dailyStreak = useDailyChallengeStore((s) => s.currentStreak);
 
   const rank = getRankForGames(totalGamesPlayed);
   const nextRank = getNextRank(totalGamesPlayed);
   const progress = getRankProgress(totalGamesPlayed);
 
-  const daily = getDailyChallenge();
-  const today = new Date().toLocaleDateString("en-CA");
-  const dailyDone = hydrated && completedDates.includes(today);
+  const daily = hydrated ? getDailyChallenge() : null;
+  const dailyDone = hydrated && completedDates.includes(new Date().toLocaleDateString("en-CA"));
 
   // Zero-friction first play: redirect new users to Classic
   useEffect(() => {
@@ -138,51 +137,53 @@ export default function Home() {
         </motion.div>
 
         {/* Daily Challenge */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.18 }}
-          className="w-full max-w-sm mb-4"
-        >
-          <button
-            onClick={() => {
-              if (dailyDone) return;
-              audioManager.uiClick();
-              haptic.light();
-              router.push(`/play/${daily.mode.id}?daily=true&target=${daily.target}`);
-            }}
-            className={`w-full rounded-2xl p-4 text-left relative overflow-hidden cursor-pointer transition-all ${
-              dailyDone ? "opacity-60" : ""
-            }`}
-            style={{
-              background: dailyDone
-                ? "rgba(255,255,255,0.02)"
-                : `linear-gradient(135deg, ${daily.mode.color}10, transparent)`,
-              border: `1px solid ${dailyDone ? "rgba(255,255,255,0.06)" : daily.mode.color + "20"}`,
-            }}
+        {daily && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.18 }}
+            className="w-full max-w-sm mb-4"
           >
-            <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${daily.mode.color}40, transparent)` }} />
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${daily.mode.color}15`, border: `1px solid ${daily.mode.color}20` }}>
-                <span className="text-lg">{dailyDone ? "✓" : daily.mode.icon}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-white/25 uppercase tracking-widest">Daily Challenge</span>
-                  {hydrated && dailyStreak > 0 && (
-                    <span className="text-[9px] text-neon-amber tabular-nums">🔥 {dailyStreak}d</span>
-                  )}
+            <button
+              onClick={() => {
+                if (dailyDone) return;
+                audioManager.uiClick();
+                haptic.light();
+                router.push(`/play/${daily.mode.id}?daily=true&target=${daily.target}`);
+              }}
+              className={`w-full rounded-2xl p-4 text-left relative overflow-hidden cursor-pointer transition-all ${
+                dailyDone ? "opacity-60" : ""
+              }`}
+              style={{
+                background: dailyDone
+                  ? "rgba(255,255,255,0.02)"
+                  : `linear-gradient(135deg, ${daily.mode.color}10, transparent)`,
+                border: `1px solid ${dailyDone ? "rgba(255,255,255,0.06)" : daily.mode.color + "20"}`,
+              }}
+            >
+              <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ background: `linear-gradient(90deg, transparent, ${daily.mode.color}40, transparent)` }} />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: `${daily.mode.color}15`, border: `1px solid ${daily.mode.color}20` }}>
+                  <span className="text-lg">{dailyDone ? "✓" : daily.mode.icon}</span>
                 </div>
-                <div className="text-sm font-bold mt-0.5" style={{ color: dailyDone ? "rgba(255,255,255,0.3)" : daily.mode.color }}>
-                  {dailyDone ? "Completed!" : daily.description}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-white/25 uppercase tracking-widest">Daily Challenge</span>
+                    {hydrated && dailyStreak > 0 && (
+                      <span className="text-[9px] text-neon-amber tabular-nums">🔥 {dailyStreak}d</span>
+                    )}
+                  </div>
+                  <div className="text-sm font-bold mt-0.5" style={{ color: dailyDone ? "rgba(255,255,255,0.3)" : daily.mode.color }}>
+                    {dailyDone ? "Completed!" : daily.description}
+                  </div>
                 </div>
+                {!dailyDone && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider opacity-30" style={{ color: daily.mode.color }}>Go →</span>
+                )}
               </div>
-              {!dailyDone && (
-                <span className="text-[10px] font-bold uppercase tracking-wider opacity-30" style={{ color: daily.mode.color }}>Go →</span>
-              )}
-            </div>
-          </button>
-        </motion.div>
+            </button>
+          </motion.div>
+        )}
 
         {/* Section Label */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="w-full max-w-sm flex items-center gap-3 mb-3">

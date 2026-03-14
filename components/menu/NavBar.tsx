@@ -1,7 +1,6 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { audioManager } from "@/lib/audio/AudioManager";
 import { haptic } from "@/lib/haptics";
 
@@ -45,13 +44,11 @@ export default function NavBar() {
                 >
                   {tab.label}
                 </span>
-                {/* DES-06: Stronger active indicator */}
+                {/* Simple CSS indicator — no layoutId to avoid framer-motion crash */}
                 {isActive && (
-                  <motion.div
-                    layoutId="nav-indicator"
-                    className="absolute -bottom-0.5 left-4 right-4 h-[2px] bg-neon-cyan rounded-full"
+                  <div
+                    className="absolute -bottom-0.5 left-4 right-4 h-[2px] bg-neon-cyan rounded-full transition-all"
                     style={{ boxShadow: "0 0 8px #00f0ff, 0 0 16px #00f0ff" }}
-                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
               </button>
