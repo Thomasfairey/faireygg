@@ -68,6 +68,7 @@ interface ResultScreenProps {
   rankedUp: boolean;
   newRankName?: string;
   dailyCompleted?: boolean;
+  leaderboardPosition?: number | null;
   onPlayAgain: () => void;
   onExit: () => void;
 }
@@ -80,6 +81,7 @@ export default function ResultScreen({
   rankedUp,
   newRankName,
   dailyCompleted,
+  leaderboardPosition,
   onPlayAgain,
   onExit,
 }: ResultScreenProps) {
@@ -225,6 +227,21 @@ export default function ResultScreen({
               <span>Avg: {benchmark.avg}</span>
               <span>Good: {benchmark.good}</span>
             </div>
+          )}
+
+          {/* Global leaderboard position */}
+          {leaderboardPosition && (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="mt-3 text-sm"
+            >
+              <span className="text-white/30">Global rank: </span>
+              <span className="font-bold tabular-nums" style={{ color: leaderboardPosition <= 3 ? "#ffaa00" : leaderboardPosition <= 10 ? "#00f0ff" : "rgba(255,255,255,0.5)" }}>
+                #{leaderboardPosition}
+              </span>
+            </motion.div>
           )}
         </motion.div>
 

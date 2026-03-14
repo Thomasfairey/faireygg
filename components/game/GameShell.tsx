@@ -8,12 +8,14 @@ import { GameResult } from "@/lib/game/scoring";
 import { useProgressionStore } from "@/lib/store/progressionStore";
 import { useOnboardingStore } from "@/lib/store/onboardingStore";
 import { useDailyChallengeStore } from "@/lib/store/dailyChallengeStore";
+import { useUsernameStore } from "@/lib/store/usernameStore";
 import { isChallengeComplete } from "@/lib/game/dailyChallenge";
 import CountdownOverlay from "./CountdownOverlay";
 import ResultScreen from "./ResultScreen";
 import ModeInstructionCard from "./ModeInstructionCard";
+import UsernamePrompt from "./UsernamePrompt";
 
-type Phase = "instruction" | "countdown" | "playing" | "result";
+type Phase = "instruction" | "countdown" | "playing" | "result" | "username-prompt";
 
 interface GameShellProps {
   mode: ModeDefinition;
@@ -21,6 +23,20 @@ interface GameShellProps {
     onComplete: (score: number, details?: Record<string, number>) => void;
     phase: Phase;
   }) => React.ReactNode;
+}
+
+async function submitToLeaderboard(mode: string, score: number, username: string): Promise<{ position: number | null }> {
+  try {
+    const res = await fetch("/api/leaderboard", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode, score, username }),
+    });
+    if (!res.ok) return { position: null };
+    return await res.json();
+  } catch {
+    return { position: null };
+  }
 }
 
 export default function GameShell({ mode, children }: GameShellProps) {
@@ -33,6 +49,7 @@ export default function GameShell({ mode, children }: GameShellProps) {
   const playedModes = useOnboardingStore((s) => s.playedModes);
   const markPlayed = useOnboardingStore((s) => s.markPlayed);
   const setFirstGameComplete = useOnboardingStore((s) => s.setFirstGameComplete);
+  const username = useUsernameStore((s) => s.username);
 
   const skipCountdown = mode.isZen;
   const needsInstruction = !playedModes.includes(mode.id);
@@ -46,8 +63,10 @@ export default function GameShell({ mode, children }: GameShellProps) {
   const [countdownKey, setCountdownKey] = useState(0);
   const [wasFirstPlay, setWasFirstPlay] = useState(false);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [leaderboardPosition, setLeaderboardPosition] = useState<number | null>(null);
   const completedRef = useRef(false);
   const initializedRef = useRef(false);
+  const pendingScoreRef = useRef<{ score: number; details?: Record<string, number> } | null>(null);
   const recordResult = useProgressionStore((s) => s.recordResult);
   const modeHistoryLength = useProgressionStore((s) => ((s.history ?? {})[mode.id] ?? []).length);
   const markDailyCompleted = useDailyChallengeStore((s) => s.markCompleted);
@@ -77,10 +96,9 @@ export default function GameShell({ mode, children }: GameShellProps) {
     setPhase("playing");
   }, []);
 
-  const handleComplete = useCallback(
-    (score: number, details?: Record<string, number>) => {
-      if (completedRef.current) return;
-      completedRef.current = true;
+  const finalizeResult = useCallback(
+    async (score: number, details?: Record<string, number>) => {
+      const currentUsername = useUsernameStore.getState().username;
 
       if (isFirstPlay) setFirstGameComplete();
       setWasFirstPlay(modeHistoryLength === 0);
@@ -94,7 +112,6 @@ export default function GameShell({ mode, children }: GameShellProps) {
       };
       const { isNewBest: nb, previousRank, newRank } = recordResult(result, mode.scoreLowerIsBetter);
 
-      // #8: Don't celebrate rank up on penalty scores (10000ms timeout)
       const isPenaltyScore = mode.id === "classic" && score >= 10000;
       setIsNewBest(nb && !isPenaltyScore);
       if (newRank.id !== previousRank.id && !isPenaltyScore) {
@@ -111,9 +128,44 @@ export default function GameShell({ mode, children }: GameShellProps) {
         }
       }
 
+      // Submit to global leaderboard (don't block on it)
+      if (currentUsername && !mode.isZen) {
+        submitToLeaderboard(mode.id, score, currentUsername).then(({ position }) => {
+          setLeaderboardPosition(position);
+        });
+      }
+
       setPhase("result");
     },
     [mode, recordResult, isFirstPlay, setFirstGameComplete, isDaily, dailyTarget, markDailyCompleted, modeHistoryLength]
+  );
+
+  const handleComplete = useCallback(
+    (score: number, details?: Record<string, number>) => {
+      if (completedRef.current) return;
+      completedRef.current = true;
+
+      // If no username set yet, prompt for one first
+      if (!username && !mode.isZen) {
+        pendingScoreRef.current = { score, details };
+        setPhase("username-prompt");
+        return;
+      }
+
+      finalizeResult(score, details);
+    },
+    [username, mode.isZen, finalizeResult]
+  );
+
+  const handleUsernameComplete = useCallback(
+    (newUsername: string) => {
+      if (pendingScoreRef.current) {
+        const { score, details } = pendingScoreRef.current;
+        pendingScoreRef.current = null;
+        finalizeResult(score, details);
+      }
+    },
+    [finalizeResult]
   );
 
   const handlePlayAgain = useCallback(() => {
@@ -124,6 +176,7 @@ export default function GameShell({ mode, children }: GameShellProps) {
     setNewRankName(undefined);
     setDailyCompleted(false);
     setShowExitConfirm(false);
+    setLeaderboardPosition(null);
     setCountdownKey((k) => k + 1);
     if (skipCountdown) {
       setPhase("playing");
@@ -136,7 +189,6 @@ export default function GameShell({ mode, children }: GameShellProps) {
     router.push("/");
   }, [router]);
 
-  // #12: Confirm before quitting mid-game
   const handleBackTap = useCallback(() => {
     if (phase === "playing" && !completedRef.current) {
       setShowExitConfirm(true);
@@ -147,7 +199,6 @@ export default function GameShell({ mode, children }: GameShellProps) {
 
   return (
     <div className="fixed inset-0 bg-space-900">
-      {/* #11: Larger, more visible back button with bg */}
       {(phase === "playing" || phase === "countdown" || mode.isZen) && (
         <button
           onClick={handleBackTap}
@@ -179,7 +230,10 @@ export default function GameShell({ mode, children }: GameShellProps) {
         )}
       </AnimatePresence>
 
-      {/* #12: Exit confirmation overlay */}
+      {phase === "username-prompt" && (
+        <UsernamePrompt onComplete={handleUsernameComplete} />
+      )}
+
       {showExitConfirm && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-space-900/80 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-4 px-8">
@@ -211,6 +265,7 @@ export default function GameShell({ mode, children }: GameShellProps) {
           rankedUp={rankedUp}
           newRankName={newRankName}
           dailyCompleted={dailyCompleted}
+          leaderboardPosition={leaderboardPosition}
           onPlayAgain={handlePlayAgain}
           onExit={handleExit}
         />
