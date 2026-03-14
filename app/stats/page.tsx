@@ -12,7 +12,7 @@ const EMPTY_OBJ = {} as Record<string, never>;
 
 const RANK_ICONS: Record<string, string> = {
   cadet: "🛰️",
-  "co-pilot": "🌑",
+  "co-pilot": "🪐",
   pilot: "🚀",
   commander: "🌟",
   "test-pilot": "🛸",

@@ -45,13 +45,13 @@ export default function GameShell({ mode, children }: GameShellProps) {
   const [dailyCompleted, setDailyCompleted] = useState(false);
   const [countdownKey, setCountdownKey] = useState(0);
   const [wasFirstPlay, setWasFirstPlay] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const completedRef = useRef(false);
   const initializedRef = useRef(false);
   const recordResult = useProgressionStore((s) => s.recordResult);
   const modeHistoryLength = useProgressionStore((s) => ((s.history ?? {})[mode.id] ?? []).length);
   const markDailyCompleted = useDailyChallengeStore((s) => s.markCompleted);
 
-  // Set initial phase after mount to avoid hydration issues with persist stores
   useEffect(() => {
     if (initializedRef.current) return;
     initializedRef.current = true;
@@ -83,10 +83,9 @@ export default function GameShell({ mode, children }: GameShellProps) {
       completedRef.current = true;
 
       if (isFirstPlay) setFirstGameComplete();
-
       setWasFirstPlay(modeHistoryLength === 0);
-
       setScore(score);
+
       const result: GameResult = {
         mode: mode.id,
         score,
@@ -94,8 +93,11 @@ export default function GameShell({ mode, children }: GameShellProps) {
         details,
       };
       const { isNewBest: nb, previousRank, newRank } = recordResult(result, mode.scoreLowerIsBetter);
-      setIsNewBest(nb);
-      if (newRank.id !== previousRank.id) {
+
+      // #8: Don't celebrate rank up on penalty scores (10000ms timeout)
+      const isPenaltyScore = mode.id === "classic" && score >= 10000;
+      setIsNewBest(nb && !isPenaltyScore);
+      if (newRank.id !== previousRank.id && !isPenaltyScore) {
         setRankedUp(true);
         setNewRankName(newRank.name);
       }
@@ -121,6 +123,7 @@ export default function GameShell({ mode, children }: GameShellProps) {
     setRankedUp(false);
     setNewRankName(undefined);
     setDailyCompleted(false);
+    setShowExitConfirm(false);
     setCountdownKey((k) => k + 1);
     if (skipCountdown) {
       setPhase("playing");
@@ -133,16 +136,28 @@ export default function GameShell({ mode, children }: GameShellProps) {
     router.push("/");
   }, [router]);
 
+  // #12: Confirm before quitting mid-game
+  const handleBackTap = useCallback(() => {
+    if (phase === "playing" && !completedRef.current) {
+      setShowExitConfirm(true);
+    } else {
+      handleExit();
+    }
+  }, [phase, handleExit]);
+
   return (
     <div className="fixed inset-0 bg-space-900">
-      {(phase === "playing" || mode.isZen) && (
+      {/* #11: Larger, more visible back button with bg */}
+      {(phase === "playing" || phase === "countdown" || mode.isZen) && (
         <button
-          onClick={handleExit}
-          className={`fixed top-[env(safe-area-inset-top,8px)] left-2 z-50 w-12 h-12 flex items-center justify-center cursor-pointer transition-colors mt-1 rounded-full ${
-            mode.isZen ? "text-indigo-300/40 hover:text-indigo-300/60 hover:bg-indigo-300/10" : "text-white/30 hover:text-white/50 hover:bg-white/5"
+          onClick={handleBackTap}
+          className={`fixed top-[env(safe-area-inset-top,8px)] left-2 z-[60] w-11 h-11 flex items-center justify-center cursor-pointer transition-colors mt-1 rounded-full ${
+            mode.isZen
+              ? "text-indigo-300/50 bg-indigo-300/10 hover:bg-indigo-300/20"
+              : "text-white/40 bg-white/[0.06] hover:bg-white/10"
           }`}
         >
-          <span className="text-lg">←</span>
+          <span className="text-base">←</span>
         </button>
       )}
 
@@ -154,9 +169,38 @@ export default function GameShell({ mode, children }: GameShellProps) {
 
       <AnimatePresence>
         {phase === "countdown" && (
-          <CountdownOverlay key={countdownKey} onComplete={handleCountdownComplete} />
+          <CountdownOverlay
+            key={countdownKey}
+            mode={mode}
+            isDaily={!!isDaily}
+            dailyTarget={dailyTarget ?? undefined}
+            onComplete={handleCountdownComplete}
+          />
         )}
       </AnimatePresence>
+
+      {/* #12: Exit confirmation overlay */}
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-space-900/80 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-4 px-8">
+            <div className="text-white/60 text-sm">Quit this round?</div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowExitConfirm(false)}
+                className="px-5 py-2 rounded-xl text-sm font-bold text-white/50 border border-white/10 cursor-pointer hover:bg-white/5"
+              >
+                Resume
+              </button>
+              <button
+                onClick={handleExit}
+                className="px-5 py-2 rounded-xl text-sm font-bold text-neon-red border border-neon-red/30 cursor-pointer hover:bg-neon-red/10"
+              >
+                Quit
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {phase === "result" && !mode.isZen && (
         <ResultScreen

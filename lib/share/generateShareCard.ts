@@ -133,28 +133,37 @@ export async function generateShareCard(data: ShareCardData): Promise<Blob> {
   });
 }
 
-export async function shareResult(data: ShareCardData) {
-  const blob = await generateShareCard(data);
-  const file = new File([blob], "neural-pulse.png", { type: "image/png" });
+// Returns "shared", "downloaded", or "error"
+export async function shareResult(data: ShareCardData): Promise<string> {
+  try {
+    const blob = await generateShareCard(data);
+    const file = new File([blob], "neural-pulse.png", { type: "image/png" });
 
-  if (navigator.share && navigator.canShare?.({ files: [file] })) {
-    try {
-      await navigator.share({
-        files: [file],
-        title: "Neural Pulse",
-        text: `${getScoreLabel(data.score, data.mode.id)} in ${data.mode.name} — can you beat it?`,
-      });
-      return;
-    } catch {
-      // User cancelled or share failed — fall through to download
+    if (typeof navigator.share === "function") {
+      try {
+        const canShare = typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
+        if (canShare) {
+          await navigator.share({
+            files: [file],
+            title: "Neural Pulse",
+            text: `${getScoreLabel(data.score, data.mode.id)} in ${data.mode.name} — can you beat it?`,
+          });
+          return "shared";
+        }
+      } catch {
+        // User cancelled or share failed — fall through to download
+      }
     }
-  }
 
-  // Fallback: download
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = "neural-pulse.png";
-  a.click();
-  URL.revokeObjectURL(url);
+    // Fallback: download
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "neural-pulse.png";
+    a.click();
+    URL.revokeObjectURL(url);
+    return "downloaded";
+  } catch {
+    return "error";
+  }
 }

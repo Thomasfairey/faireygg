@@ -24,11 +24,13 @@ export default function ZenMode({ phase }: ZenModeProps) {
   const ambientStop = useRef<(() => void) | null>(null);
   const zoneRef = useRef<HTMLDivElement>(null);
 
+  // #18: Ensure first target spawns near centre, subsequent random
   const spawnTarget = useCallback(() => {
     keyRef.current += 1;
+    const isFirst = keyRef.current === 1;
     setTarget({
-      x: 15 + Math.random() * 70,
-      y: 15 + Math.random() * 60,
+      x: isFirst ? 50 : 15 + Math.random() * 70,
+      y: isFirst ? 45 : 15 + Math.random() * 60,
       key: keyRef.current,
     });
     // Auto-fade after a while if not tapped

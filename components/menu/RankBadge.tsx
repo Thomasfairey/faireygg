@@ -6,7 +6,7 @@ import ProgressRing from "@/components/ui/ProgressRing";
 
 const RANK_ICONS: Record<string, string> = {
   cadet: "🛰️",
-  "co-pilot": "🌑",
+  "co-pilot": "🪐",
   pilot: "🚀",
   commander: "🌟",
   "test-pilot": "🛸",

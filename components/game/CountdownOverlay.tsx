@@ -2,14 +2,28 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { ModeDefinition } from "@/lib/game/modes";
 import { audioManager } from "@/lib/audio/AudioManager";
 import { haptic } from "@/lib/haptics";
 
 interface CountdownOverlayProps {
+  mode: ModeDefinition;
+  isDaily?: boolean;
+  dailyTarget?: string;
   onComplete: () => void;
 }
 
-export default function CountdownOverlay({ onComplete }: CountdownOverlayProps) {
+const MODE_HINTS: Record<string, string> = {
+  classic: "Tap when the screen turns green",
+  "speed-round": "Tap as fast as you can",
+  sequence: "Watch the pattern, then repeat",
+  "shrinking-target": "Hit the target before it vanishes",
+  "aim-trainer": "Tap targets as fast as you can",
+  inhibition: "Tap green, resist red",
+  zen: "",
+};
+
+export default function CountdownOverlay({ mode, isDaily, dailyTarget, onComplete }: CountdownOverlayProps) {
   const [count, setCount] = useState(3);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
@@ -29,7 +43,6 @@ export default function CountdownOverlay({ onComplete }: CountdownOverlayProps) 
     };
   }, []);
 
-  // Separate effect to handle count changes and play sounds
   useEffect(() => {
     if (count === 2 || count === 1) {
       audioManager.countdownTick();
@@ -43,8 +56,22 @@ export default function CountdownOverlay({ onComplete }: CountdownOverlayProps) 
     }
   }, [count]);
 
+  const hint = MODE_HINTS[mode.id] ?? "";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-space-900/90 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-space-900/90 backdrop-blur-md">
+      {/* #1 & #13: Mode context shown during countdown */}
+      <div className="absolute top-20 left-0 right-0 flex flex-col items-center gap-1">
+        <span className="text-2xl">{mode.icon}</span>
+        <span className="text-sm font-bold" style={{ color: mode.color }}>{mode.name}</span>
+        {hint && <span className="text-[10px] text-white/30 max-w-[200px] text-center">{hint}</span>}
+        {isDaily && dailyTarget && (
+          <span className="text-[10px] text-neon-amber mt-1 font-bold uppercase tracking-wider">
+            Daily: {dailyTarget}
+          </span>
+        )}
+      </div>
+
       <AnimatePresence mode="popLayout">
         {count > 0 && (
           <motion.div

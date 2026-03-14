@@ -30,10 +30,11 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
   phaseRef.current = phase;
   const zoneRef = useRef<HTMLDivElement>(null);
 
+  // #3: Tighten spawn range to prevent off-screen targets (56px target on small screens)
   const randomTarget = useCallback(
     (key: number) => ({
-      x: 10 + Math.random() * 80,
-      y: 15 + Math.random() * 60,
+      x: 12 + Math.random() * 76,
+      y: 18 + Math.random() * 54,
       key,
     }),
     []

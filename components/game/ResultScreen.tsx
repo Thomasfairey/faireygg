@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { ModeDefinition } from "@/lib/game/modes";
 import { getScoreLabel, getReactionMessage, getInhibitionMessage } from "@/lib/game/scoring";
@@ -113,8 +113,11 @@ export default function ResultScreen({
     ? `${(score / 1000).toFixed(1)}s`
     : getScoreLabel(score, mode.id);
 
-  const handleShare = () => {
-    shareResult({
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
+
+  const handleShare = async () => {
+    setShareStatus("...");
+    const result = await shareResult({
       mode,
       score,
       message,
@@ -122,6 +125,14 @@ export default function ResultScreen({
       rankColor: rank.color,
       isNewBest: showNewBest,
     });
+    if (result === "shared") {
+      setShareStatus("Shared!");
+    } else if (result === "downloaded") {
+      setShareStatus("Saved!");
+    } else {
+      setShareStatus("Failed");
+    }
+    setTimeout(() => setShareStatus(null), 2000);
   };
 
   return (
@@ -188,7 +199,14 @@ export default function ResultScreen({
           transition={{ delay: 0.1 }}
           className="text-center"
         >
-          <div className="text-6xl font-bold tabular-nums" style={{ color: mode.color }}>
+          {/* #5: Responsive score sizing to prevent overflow */}
+          <div
+            className="font-bold tabular-nums"
+            style={{
+              color: mode.color,
+              fontSize: displayScore.length > 6 ? "2.5rem" : "3.75rem",
+            }}
+          >
             {displayScore}
           </div>
           <div className="text-white/50 text-lg mt-2">{message}</div>
@@ -216,8 +234,8 @@ export default function ResultScreen({
             onClick={handleShare}
             className="text-white/30 text-sm py-2 cursor-pointer hover:text-white/50 transition-colors flex items-center justify-center gap-2"
           >
-            <span>Share Result</span>
-            <span className="text-xs">↗</span>
+            <span>{shareStatus ?? "Share Result"}</span>
+            {!shareStatus && <span className="text-xs">↗</span>}
           </button>
           <button onClick={onExit} className="text-white/20 text-xs py-1 cursor-pointer hover:text-white/40 transition-colors">
             Back to Menu

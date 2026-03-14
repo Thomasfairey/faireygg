@@ -20,7 +20,7 @@ import { EMPTY_OBJECT, EMPTY_ARRAY } from "@/lib/store/stableDefaults";
 
 const RANK_ICONS: Record<string, string> = {
   cadet: "🛰️",
-  "co-pilot": "🌑",
+  "co-pilot": "🪐",
   pilot: "🚀",
   commander: "🌟",
   "test-pilot": "🛸",
@@ -94,7 +94,7 @@ export default function Home() {
             🧠
           </motion.div>
           <h1 className="text-3xl font-bold shimmer-text tracking-tight">NEURAL PULSE</h1>
-          <p className="text-[10px] text-white/40 mt-1.5 uppercase tracking-[0.3em]">Deep Space Reflex System</p>
+          <p className="text-[10px] text-white/40 mt-1.5 uppercase tracking-[0.2em] sm:tracking-[0.3em]">Reflex Training</p>
         </motion.div>
 
         {/* Rank Card */}
@@ -197,7 +197,9 @@ export default function Home() {
         <div className="w-full max-w-sm flex flex-col gap-2.5">
           {MODES.map((mode, i) => {
             const board = leaderboards[mode.id] ?? [];
-            const best = board.length > 0 ? board[0].score : null;
+            const rawBest = board.length > 0 ? board[0].score : null;
+            // #19: Don't display 0 as a best score
+            const best = rawBest !== null && rawBest > 0 ? rawBest : null;
             const flavour = MODE_FLAVOUR[mode.id];
 
             return (
