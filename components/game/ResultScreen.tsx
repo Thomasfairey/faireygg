@@ -262,7 +262,10 @@ export default function ResultScreen({
             <span>{shareStatus ?? "Share Result"}</span>
             {!shareStatus && <span className="text-xs">↗</span>}
           </button>
-          <button onClick={onExit} className="text-white/20 text-xs py-1 cursor-pointer hover:text-white/40 transition-colors">
+          <button
+            onClick={onExit}
+            className="w-full py-3 rounded-xl text-sm font-bold text-white/40 border border-white/10 cursor-pointer hover:text-white/60 hover:bg-white/[0.03] transition-all"
+          >
             Back to Menu
           </button>
         </motion.div>

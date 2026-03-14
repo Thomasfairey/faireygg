@@ -160,8 +160,9 @@ export default function LeaderboardPage() {
               )}
 
               {view === "global" && !loading && globalEntries.length === 0 && (
-                <div className="text-center py-16 text-white/20 text-sm">
-                  No global scores yet. Be the first!
+                <div className="text-center py-16">
+                  <div className="text-white/20 text-sm">No global scores yet</div>
+                  <div className="text-white/10 text-xs mt-2">Play any mode to submit your score</div>
                 </div>
               )}
 

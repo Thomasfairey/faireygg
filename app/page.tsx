@@ -86,7 +86,7 @@ export default function Home() {
               style={{ borderStyle: "dashed" }}
             />
           </div>
-          <h1 className="text-3xl font-bold shimmer-text tracking-tight">NEURAL PULSE</h1>
+          <h1 className="text-5xl font-bold shimmer-text tracking-tight">NEURAL PULSE</h1>
           <p className="text-[10px] text-white/40 mt-1.5 uppercase tracking-[0.2em] sm:tracking-[0.3em]">Reflex Training</p>
         </motion.div>
 
