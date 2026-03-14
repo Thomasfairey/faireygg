@@ -12,8 +12,8 @@ interface ShrinkingTargetModeProps {
 
 const INITIAL_SIZE = 140;
 const MIN_SIZE = 20;
-const SHRINK_SPEED = 35; // px per second base
-const SPEED_INCREMENT = 3; // additional px/s per hit
+const SHRINK_SPEED = 35;
+const SPEED_INCREMENT = 3;
 
 export default function ShrinkingTargetMode({ onComplete, phase }: ShrinkingTargetModeProps) {
   const [size, setSize] = useState(INITIAL_SIZE);
@@ -25,11 +25,15 @@ export default function ShrinkingTargetMode({ onComplete, phase }: ShrinkingTarg
   const speedRef = useRef(SHRINK_SPEED);
   const lastTimeRef = useRef(0);
   const hitsRef = useRef(0);
+  const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   const randomPosition = useCallback(() => {
     return {
-      x: 15 + Math.random() * 70, // % from left
-      y: 20 + Math.random() * 50, // % from top
+      x: 15 + Math.random() * 70,
+      y: 20 + Math.random() * 50,
     };
   }, []);
 
@@ -39,12 +43,22 @@ export default function ShrinkingTargetMode({ onComplete, phase }: ShrinkingTarg
     sizeRef.current = INITIAL_SIZE;
     speedRef.current = SHRINK_SPEED;
     hitsRef.current = 0;
+    completedRef.current = false;
     setSize(INITIAL_SIZE);
     setHits(0);
     setPosition(randomPosition());
-    lastTimeRef.current = performance.now();
+
+    let localAnimId: number;
 
     function tick(time: number) {
+      if (completedRef.current) return;
+
+      if (lastTimeRef.current === 0) {
+        lastTimeRef.current = time;
+        localAnimId = requestAnimationFrame(tick);
+        return;
+      }
+
       const dt = (time - lastTimeRef.current) / 1000;
       lastTimeRef.current = time;
 
@@ -52,37 +66,38 @@ export default function ShrinkingTargetMode({ onComplete, phase }: ShrinkingTarg
       setSize(Math.max(sizeRef.current, 0));
 
       if (sizeRef.current <= 0) {
-        onComplete(hitsRef.current);
+        completedRef.current = true;
+        onCompleteRef.current(hitsRef.current);
         return;
       }
 
-      animRef.current = requestAnimationFrame(tick);
+      localAnimId = requestAnimationFrame(tick);
     }
 
-    animRef.current = requestAnimationFrame(tick);
+    lastTimeRef.current = 0; // reset so first frame uses rAF timestamp
+    localAnimId = requestAnimationFrame(tick);
 
-    return () => cancelAnimationFrame(animRef.current);
-  }, [phase, randomPosition, onComplete]);
+    return () => {
+      cancelAnimationFrame(localAnimId);
+      if (shakeTimer.current) clearTimeout(shakeTimer.current);
+    };
+  }, [phase, randomPosition]);
 
   const handleHit = useCallback(
-    (e: React.MouseEvent | React.TouchEvent) => {
+    (e: React.PointerEvent) => {
       e.stopPropagation();
       e.preventDefault();
 
-      if (phase !== "playing") return;
+      if (phase !== "playing" || completedRef.current) return;
 
       hitsRef.current += 1;
       setHits(hitsRef.current);
 
-      // Reset size with slight reduction
       const newSize = Math.max(INITIAL_SIZE - hitsRef.current * 5, MIN_SIZE + 20);
       sizeRef.current = newSize;
       setSize(newSize);
 
-      // Increase speed
       speedRef.current = SHRINK_SPEED + hitsRef.current * SPEED_INCREMENT;
-
-      // New position
       setPosition(randomPosition());
 
       audioManager.tapSuccess();
@@ -91,13 +106,19 @@ export default function ShrinkingTargetMode({ onComplete, phase }: ShrinkingTarg
     [phase, randomPosition]
   );
 
-  const handleMiss = useCallback(() => {
-    if (phase !== "playing") return;
-    audioManager.tapFail();
-    haptic.error();
-    setShake(true);
-    setTimeout(() => setShake(false), 400);
-  }, [phase]);
+  const handleMiss = useCallback(
+    (e: React.PointerEvent) => {
+      if (phase !== "playing" || completedRef.current) return;
+      if ((e.target as HTMLElement).closest("[data-target]")) return;
+
+      audioManager.tapFail();
+      haptic.error();
+      setShake(true);
+      if (shakeTimer.current) clearTimeout(shakeTimer.current);
+      shakeTimer.current = setTimeout(() => setShake(false), 400);
+    },
+    [phase]
+  );
 
   if (phase !== "playing") return null;
 
@@ -109,11 +130,7 @@ export default function ShrinkingTargetMode({ onComplete, phase }: ShrinkingTarg
           : { x: 0 }
       }
       className="fixed inset-0"
-      onMouseDown={handleMiss}
-      onTouchStart={(e) => {
-        e.preventDefault();
-        handleMiss();
-      }}
+      onPointerDown={handleMiss}
     >
       {/* Score */}
       <div className="fixed top-16 left-0 right-0 text-center z-10">
@@ -125,6 +142,7 @@ export default function ShrinkingTargetMode({ onComplete, phase }: ShrinkingTarg
 
       {/* Target */}
       <motion.div
+        data-target
         animate={{
           left: `${position.x}%`,
           top: `${position.y}%`,
@@ -134,10 +152,10 @@ export default function ShrinkingTargetMode({ onComplete, phase }: ShrinkingTarg
         style={{
           transform: "translate(-50%, -50%)",
         }}
-        onMouseDown={handleHit}
-        onTouchStart={handleHit}
+        onPointerDown={handleHit}
       >
         <div
+          data-target
           className="rounded-full cursor-pointer relative"
           style={{
             width: size,
@@ -148,12 +166,11 @@ export default function ShrinkingTargetMode({ onComplete, phase }: ShrinkingTarg
             transition: "width 0.05s linear, height 0.05s linear",
           }}
         >
-          {/* Crosshair */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-[2px] h-1/2 bg-neon-green/30" />
+          <div data-target className="absolute inset-0 flex items-center justify-center">
+            <div data-target className="w-[2px] h-1/2 bg-neon-green/30" />
           </div>
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-[2px] w-1/2 bg-neon-green/30" />
+          <div data-target className="absolute inset-0 flex items-center justify-center">
+            <div data-target className="h-[2px] w-1/2 bg-neon-green/30" />
           </div>
         </div>
       </motion.div>

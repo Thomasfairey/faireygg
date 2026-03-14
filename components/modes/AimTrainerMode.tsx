@@ -15,11 +15,15 @@ const TARGET_SIZE = 56;
 
 export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProps) {
   const [target, setTarget] = useState({ x: 50, y: 50, key: 0 });
-  const [targetsHit, setTargetsHit] = useState(0);
-  const [times, setTimes] = useState<number[]>([]);
+  const [displayHits, setDisplayHits] = useState(0);
+  const [displayAvg, setDisplayAvg] = useState<number | null>(null);
   const [shake, setShake] = useState(false);
   const lastHitTime = useRef(0);
   const hitRef = useRef(0);
+  const timesRef = useRef<number[]>([]);
+  const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   const randomTarget = useCallback(
     (key: number) => ({
@@ -33,15 +37,19 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
   useEffect(() => {
     if (phase === "playing") {
       hitRef.current = 0;
-      setTargetsHit(0);
-      setTimes([]);
+      timesRef.current = [];
+      setDisplayHits(0);
+      setDisplayAvg(null);
       setTarget(randomTarget(0));
       lastHitTime.current = performance.now();
     }
+    return () => {
+      if (shakeTimer.current) clearTimeout(shakeTimer.current);
+    };
   }, [phase, randomTarget]);
 
   const handleHit = useCallback(
-    (e: React.MouseEvent | React.TouchEvent) => {
+    (e: React.PointerEvent) => {
       e.stopPropagation();
       e.preventDefault();
       if (phase !== "playing") return;
@@ -51,33 +59,42 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
       lastHitTime.current = now;
 
       hitRef.current += 1;
-      const newTimes = [...times, reactionMs];
-      setTimes(newTimes);
-      setTargetsHit(hitRef.current);
+      timesRef.current.push(reactionMs);
+      const times = timesRef.current;
+
+      setDisplayHits(hitRef.current);
+      setDisplayAvg(Math.round(times.reduce((a, b) => a + b, 0) / times.length));
 
       audioManager.tapSuccess();
       haptic.light();
 
       if (hitRef.current >= TOTAL_TARGETS) {
-        const avg = Math.round(newTimes.reduce((a, b) => a + b, 0) / newTimes.length);
-        onComplete(avg, {
+        const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
+        onCompleteRef.current(avg, {
           hits: hitRef.current,
-          totalMs: newTimes.reduce((a, b) => a + b, 0),
+          totalMs: times.reduce((a, b) => a + b, 0),
         });
       } else {
         setTarget(randomTarget(hitRef.current));
       }
     },
-    [phase, times, onComplete, randomTarget]
+    [phase, randomTarget]
   );
 
-  const handleMiss = useCallback(() => {
-    if (phase !== "playing") return;
-    audioManager.tapFail();
-    haptic.error();
-    setShake(true);
-    setTimeout(() => setShake(false), 400);
-  }, [phase]);
+  const handleMiss = useCallback(
+    (e: React.PointerEvent) => {
+      if (phase !== "playing") return;
+      // Only fire if the pointer target is the background, not the target
+      if ((e.target as HTMLElement).closest("[data-target]")) return;
+
+      audioManager.tapFail();
+      haptic.error();
+      setShake(true);
+      if (shakeTimer.current) clearTimeout(shakeTimer.current);
+      shakeTimer.current = setTimeout(() => setShake(false), 400);
+    },
+    [phase]
+  );
 
   if (phase !== "playing") return null;
 
@@ -89,25 +106,21 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
           : { x: 0 }
       }
       className="fixed inset-0"
-      onMouseDown={handleMiss}
-      onTouchStart={(e) => {
-        e.preventDefault();
-        handleMiss();
-      }}
+      onPointerDown={handleMiss}
     >
       {/* Header */}
       <div className="fixed top-16 left-0 right-0 flex justify-center gap-8 z-10">
         <div className="text-center">
           <div className="text-[10px] text-white/30 uppercase tracking-widest">Target</div>
           <div className="text-xl font-bold text-neon-amber text-glow-amber tabular-nums">
-            {targetsHit}/{TOTAL_TARGETS}
+            {displayHits}/{TOTAL_TARGETS}
           </div>
         </div>
-        {times.length > 0 && (
+        {displayAvg !== null && (
           <div className="text-center">
             <div className="text-[10px] text-white/30 uppercase tracking-widest">Avg</div>
             <div className="text-xl font-bold text-neon-amber tabular-nums">
-              {Math.round(times.reduce((a, b) => a + b, 0) / times.length)}ms
+              {displayAvg}ms
             </div>
           </div>
         )}
@@ -117,7 +130,7 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
       <div className="fixed top-12 left-8 right-8 h-[2px] bg-white/10 rounded-full z-10">
         <motion.div
           className="h-full bg-neon-amber rounded-full"
-          animate={{ width: `${(targetsHit / TOTAL_TARGETS) * 100}%` }}
+          animate={{ width: `${(displayHits / TOTAL_TARGETS) * 100}%` }}
           transition={{ type: "spring", stiffness: 300, damping: 30 }}
           style={{ boxShadow: "0 0 8px #ffaa00" }}
         />
@@ -127,6 +140,7 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
       <AnimatePresence mode="popLayout">
         <motion.div
           key={target.key}
+          data-target
           initial={{ scale: 0, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 1.5, opacity: 0 }}
@@ -137,10 +151,10 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
             top: `${target.y}%`,
             transform: "translate(-50%, -50%)",
           }}
-          onMouseDown={handleHit}
-          onTouchStart={handleHit}
+          onPointerDown={handleHit}
         >
           <div
+            data-target
             className="rounded-full relative"
             style={{
               width: TARGET_SIZE,
@@ -151,8 +165,9 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
             }}
           >
             {/* Center dot */}
-            <div className="absolute inset-0 flex items-center justify-center">
+            <div data-target className="absolute inset-0 flex items-center justify-center">
               <div
+                data-target
                 className="w-3 h-3 rounded-full bg-neon-amber"
                 style={{ boxShadow: "0 0 8px #ffaa00" }}
               />

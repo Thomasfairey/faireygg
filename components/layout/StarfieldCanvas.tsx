@@ -5,12 +5,12 @@ import { useEffect, useRef } from "react";
 interface Star {
   x: number;
   y: number;
-  z: number; // depth 0-1
+  z: number;
   vx: number;
   vy: number;
   size: number;
   opacity: number;
-  hue: number; // 0 = white, others = tinted
+  hue: number;
 }
 
 export default function StarfieldCanvas() {
@@ -24,31 +24,44 @@ export default function StarfieldCanvas() {
     if (!ctx) return;
 
     let animId: number;
+    let paused = false;
+    let cachedW = window.innerWidth;
+    let cachedH = window.innerHeight;
     const dpr = window.devicePixelRatio || 1;
 
     function resize() {
       if (!canvas) return;
-      canvas.width = window.innerWidth * dpr;
-      canvas.height = window.innerHeight * dpr;
-      canvas.style.width = `${window.innerWidth}px`;
-      canvas.style.height = `${window.innerHeight}px`;
-      ctx!.scale(dpr, dpr);
+      cachedW = window.innerWidth;
+      cachedH = window.innerHeight;
+      canvas.width = cachedW * dpr;
+      canvas.height = cachedH * dpr;
+      canvas.style.width = `${cachedW}px`;
+      canvas.style.height = `${cachedH}px`;
+      // Use setTransform to avoid accumulating scale on resize
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
     }
 
     resize();
     window.addEventListener("resize", resize);
 
-    // Create stars
+    // Pause when tab is hidden to save battery
+    function handleVisibility() {
+      paused = document.hidden;
+      if (!paused) {
+        lastTime = performance.now();
+        animId = requestAnimationFrame(draw);
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+
     const STAR_COUNT = 200;
     const stars: Star[] = [];
-    const w = () => window.innerWidth;
-    const h = () => window.innerHeight;
 
     for (let i = 0; i < STAR_COUNT; i++) {
       const z = Math.random();
       stars.push({
-        x: Math.random() * w(),
-        y: Math.random() * h(),
+        x: Math.random() * cachedW,
+        y: Math.random() * cachedH,
         z,
         vx: (Math.random() - 0.5) * 0.15,
         vy: 0.05 + z * 0.2,
@@ -61,24 +74,24 @@ export default function StarfieldCanvas() {
     let lastTime = performance.now();
 
     function draw(time: number) {
-      const dt = Math.min((time - lastTime) / 16.67, 3); // normalize to ~60fps
+      if (paused) return;
+
+      const dt = Math.min((time - lastTime) / 16.67, 3);
       lastTime = time;
 
-      ctx!.clearRect(0, 0, w(), h());
+      ctx!.clearRect(0, 0, cachedW, cachedH);
 
       for (const star of stars) {
         star.x += star.vx * dt;
         star.y += star.vy * dt;
 
-        // Wrap around
-        if (star.y > h() + 5) {
+        if (star.y > cachedH + 5) {
           star.y = -5;
-          star.x = Math.random() * w();
+          star.x = Math.random() * cachedW;
         }
-        if (star.x < -5) star.x = w() + 5;
-        if (star.x > w() + 5) star.x = -5;
+        if (star.x < -5) star.x = cachedW + 5;
+        if (star.x > cachedW + 5) star.x = -5;
 
-        // Twinkle
         const twinkle = 0.7 + 0.3 * Math.sin(time * 0.002 + star.x * 0.01);
         const alpha = star.opacity * twinkle;
 
@@ -93,7 +106,6 @@ export default function StarfieldCanvas() {
 
         ctx!.fill();
 
-        // Glow for larger stars
         if (star.size > 1.5) {
           ctx!.beginPath();
           ctx!.arc(star.x, star.y, star.size * 3, 0, Math.PI * 2);
@@ -114,6 +126,7 @@ export default function StarfieldCanvas() {
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, []);
 

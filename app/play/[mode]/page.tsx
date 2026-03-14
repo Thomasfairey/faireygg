@@ -24,7 +24,7 @@ export default function PlayPage({
 
   return (
     <GameShell mode={mode}>
-      {({ onComplete, onFail, phase }) => {
+      {({ onComplete, phase }) => {
         switch (mode.id) {
           case "classic":
             return <ClassicMode onComplete={onComplete} phase={phase} />;

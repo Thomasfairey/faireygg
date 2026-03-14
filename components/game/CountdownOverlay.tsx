@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { audioManager } from "@/lib/audio/AudioManager";
 import { haptic } from "@/lib/haptics";
@@ -11,32 +11,37 @@ interface CountdownOverlayProps {
 
 export default function CountdownOverlay({ onComplete }: CountdownOverlayProps) {
   const [count, setCount] = useState(3);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     audioManager.init();
     audioManager.countdownTick();
     haptic.countdown();
 
-    const interval = setInterval(() => {
-      setCount((prev) => {
-        const next = prev - 1;
-        if (next > 0) {
-          audioManager.countdownTick();
-          haptic.countdown();
-        } else if (next === 0) {
-          audioManager.countdownGo();
-          haptic.medium();
-        }
-        return next;
-      });
+    intervalRef.current = setInterval(() => {
+      setCount((prev) => prev - 1);
     }, 800);
 
-    return () => clearInterval(interval);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
   }, []);
 
+  // Separate effect to handle count changes and play sounds
   useEffect(() => {
-    if (count < 0) onComplete();
-  }, [count, onComplete]);
+    if (count === 2 || count === 1) {
+      audioManager.countdownTick();
+      haptic.countdown();
+    } else if (count === 0) {
+      audioManager.countdownGo();
+      haptic.medium();
+    } else if (count < 0) {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      onCompleteRef.current();
+    }
+  }, [count]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-space-900/90 backdrop-blur-md">

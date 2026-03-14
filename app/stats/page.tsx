@@ -1,20 +1,40 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { MODES, GameMode } from "@/lib/game/modes";
+import { MODES } from "@/lib/game/modes";
 import { useProgressionStore } from "@/lib/store/progressionStore";
 import { getRankForGames, getNextRank, getRankProgress } from "@/lib/game/ranks";
 import { getScoreLabel } from "@/lib/game/scoring";
 import ProgressRing from "@/components/ui/ProgressRing";
+import { useHydrated } from "@/lib/hooks/useHydrated";
+
+const RANK_ICONS: Record<string, string> = {
+  cadet: "🔰",
+  "co-pilot": "✈️",
+  pilot: "🚀",
+  commander: "⭐",
+  "test-pilot": "🛸",
+  lightspeed: "💫",
+};
 
 export default function StatsPage() {
+  const hydrated = useHydrated();
   const totalGamesPlayed = useProgressionStore((s) => s.totalGamesPlayed);
-  const getHistory = useProgressionStore((s) => s.getHistory);
-  const getStreak = useProgressionStore((s) => s.getStreak);
-  const getBestScore = useProgressionStore((s) => s.getBestScore);
+  const leaderboards = useProgressionStore((s) => s.leaderboards);
+  const history = useProgressionStore((s) => s.history);
+  const streaks = useProgressionStore((s) => s.streaks);
+
   const rank = getRankForGames(totalGamesPlayed);
   const nextRank = getNextRank(totalGamesPlayed);
   const progress = getRankProgress(totalGamesPlayed);
+
+  if (!hydrated) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="text-white/20 text-sm">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 overflow-y-auto">
@@ -35,14 +55,7 @@ export default function StatsPage() {
         >
           <div className="flex items-center gap-5">
             <ProgressRing progress={progress} size={72} strokeWidth={4} color={rank.color}>
-              <span className="text-2xl">
-                {rank.id === "cadet" && "🔰"}
-                {rank.id === "co-pilot" && "✈️"}
-                {rank.id === "pilot" && "🚀"}
-                {rank.id === "commander" && "⭐"}
-                {rank.id === "test-pilot" && "🛸"}
-                {rank.id === "lightspeed" && "💫"}
-              </span>
+              <span className="text-2xl">{RANK_ICONS[rank.id] ?? "🔰"}</span>
             </ProgressRing>
             <div>
               <div className={`font-bold text-xl ${rank.glowClass}`} style={{ color: rank.color }}>
@@ -61,9 +74,10 @@ export default function StatsPage() {
         {/* Per-mode stats */}
         <div className="w-full max-w-sm flex flex-col gap-3">
           {MODES.map((mode, i) => {
-            const history = getHistory(mode.id);
-            const streak = getStreak(mode.id);
-            const best = getBestScore(mode.id);
+            const modeHistory = history[mode.id] ?? [];
+            const modeStreak = streaks[mode.id] ?? { current: 0, best: 0 };
+            const modeBoard = leaderboards[mode.id] ?? [];
+            const best = modeBoard.length > 0 ? modeBoard[0].score : null;
 
             return (
               <motion.div
@@ -79,11 +93,11 @@ export default function StatsPage() {
                     {mode.name}
                   </span>
                   <span className="text-xs text-white/20 ml-auto">
-                    {history.length} played
+                    {modeHistory.length} played
                   </span>
                 </div>
 
-                {history.length > 0 ? (
+                {modeHistory.length > 0 ? (
                   <div className="grid grid-cols-3 gap-3 text-center">
                     <div>
                       <div className="text-[10px] text-white/30 uppercase tracking-wider">Best</div>
@@ -95,7 +109,7 @@ export default function StatsPage() {
                       <div className="text-[10px] text-white/30 uppercase tracking-wider">Avg</div>
                       <div className="font-bold tabular-nums text-sm text-white/60">
                         {getScoreLabel(
-                          Math.round(history.reduce((a, b) => a + b.score, 0) / history.length),
+                          Math.round(modeHistory.reduce((a, b) => a + b.score, 0) / modeHistory.length),
                           mode.id
                         )}
                       </div>
@@ -103,7 +117,7 @@ export default function StatsPage() {
                     <div>
                       <div className="text-[10px] text-white/30 uppercase tracking-wider">Streak</div>
                       <div className="font-bold tabular-nums text-sm text-white/60">
-                        {streak.current}d / {streak.best}d
+                        {modeStreak.current}d / {modeStreak.best}d
                       </div>
                     </div>
                   </div>
@@ -112,9 +126,9 @@ export default function StatsPage() {
                 )}
 
                 {/* Mini chart */}
-                {history.length > 1 && (
+                {modeHistory.length > 1 && (
                   <MiniChart
-                    data={history.slice(-20).map((h) => h.score)}
+                    data={modeHistory.slice(-20).map((h) => h.score)}
                     color={mode.color}
                     invert={mode.scoreLowerIsBetter}
                   />

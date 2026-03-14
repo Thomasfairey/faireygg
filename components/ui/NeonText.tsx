@@ -1,5 +1,3 @@
-"use client";
-
 interface NeonTextProps {
   children: React.ReactNode;
   color?: string;

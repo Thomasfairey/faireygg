@@ -17,6 +17,17 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
   const [shake, setShake] = useState(false);
   const readyAt = useRef(0);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recoveryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const completedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
+  const clearAllTimers = useCallback(() => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    if (shakeTimer.current) clearTimeout(shakeTimer.current);
+    if (recoveryTimer.current) clearTimeout(recoveryTimer.current);
+  }, []);
 
   const startWaiting = useCallback(() => {
     setTapPhase("waiting");
@@ -29,31 +40,32 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
 
   useEffect(() => {
     if (phase === "playing") {
+      completedRef.current = false;
       startWaiting();
     }
-    return () => {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    };
-  }, [phase, startWaiting]);
+    return clearAllTimers;
+  }, [phase, startWaiting, clearAllTimers]);
 
   const handleTap = useCallback(() => {
-    if (phase !== "playing") return;
+    if (phase !== "playing" || completedRef.current) return;
 
     if (tapPhase === "waiting") {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       audioManager.tapFail();
       haptic.error();
       setShake(true);
-      setTimeout(() => setShake(false), 400);
+      shakeTimer.current = setTimeout(() => setShake(false), 400);
       setTapPhase("too-early");
-      setTimeout(() => startWaiting(), 1200);
+      recoveryTimer.current = setTimeout(() => startWaiting(), 1200);
     } else if (tapPhase === "ready") {
       const ms = Math.round(performance.now() - readyAt.current);
+      completedRef.current = true;
       audioManager.tapSuccess();
       haptic.success();
-      onComplete(ms);
+      onCompleteRef.current(ms);
     }
-  }, [tapPhase, phase, onComplete, startWaiting]);
+    // "too-early" taps are silently ignored — recovery timer will restart
+  }, [tapPhase, phase, startWaiting]);
 
   if (phase !== "playing") return null;
 
@@ -79,13 +91,11 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
           : { x: 0 }
       }
       className="fixed inset-0 flex items-center justify-center"
-      onMouseDown={handleTap}
-      onTouchStart={(e) => {
+      onPointerDown={(e) => {
         e.preventDefault();
         handleTap();
       }}
     >
-      {/* Central zone */}
       <div
         className={`
           w-[80vw] h-[50vh] max-w-md rounded-3xl

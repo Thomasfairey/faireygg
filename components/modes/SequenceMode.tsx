@@ -22,7 +22,22 @@ export default function SequenceMode({ onComplete, phase }: SequenceModeProps) {
   const [flashPanel, setFlashPanel] = useState<number | null>(null);
   const [level, setLevel] = useState(0);
   const [shake, setShake] = useState(false);
-  const showingRef = useRef(false);
+  const abortRef = useRef(false);
+  const completedRef = useRef(false);
+  const timersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
+  const clearTimers = useCallback(() => {
+    timersRef.current.forEach(clearTimeout);
+    timersRef.current = [];
+  }, []);
+
+  const addTimer = useCallback((fn: () => void, ms: number) => {
+    const id = setTimeout(fn, ms);
+    timersRef.current.push(id);
+    return id;
+  }, []);
 
   const generateSequence = useCallback((length: number) => {
     const seq: number[] = [];
@@ -33,46 +48,55 @@ export default function SequenceMode({ onComplete, phase }: SequenceModeProps) {
   }, []);
 
   const showSequence = useCallback(
-    async (seq: number[]) => {
-      showingRef.current = true;
+    async (seq: number[], abortSignal: { aborted: boolean }) => {
       setShowingSequence(true);
       setPlayerIndex(0);
 
-      await new Promise((r) => setTimeout(r, 500));
+      await new Promise((r) => { addTimer(r as () => void, 500); });
+      if (abortSignal.aborted) return;
 
       for (let i = 0; i < seq.length; i++) {
-        if (!showingRef.current) return;
+        if (abortSignal.aborted) return;
         setActivePanel(seq[i]);
         audioManager.sequenceTone(seq[i]);
-        await new Promise((r) => setTimeout(r, 500));
+        await new Promise((r) => { addTimer(r as () => void, 500); });
+        if (abortSignal.aborted) return;
         setActivePanel(null);
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => { addTimer(r as () => void, 200); });
       }
 
-      setShowingSequence(false);
-      showingRef.current = false;
+      if (!abortSignal.aborted) {
+        setShowingSequence(false);
+      }
     },
-    []
+    [addTimer]
   );
 
   useEffect(() => {
     if (phase === "playing") {
+      clearTimers();
+      abortRef.current = false;
+      completedRef.current = false;
       const seq = generateSequence(INITIAL_LENGTH);
       setSequence(seq);
       setLevel(INITIAL_LENGTH);
-      showSequence(seq);
+      const signal = { aborted: false };
+      showSequence(seq, signal);
+
+      return () => {
+        signal.aborted = true;
+        abortRef.current = true;
+        clearTimers();
+      };
     }
-    return () => {
-      showingRef.current = false;
-    };
-  }, [phase, generateSequence, showSequence]);
+  }, [phase, generateSequence, showSequence, clearTimers]);
 
   const handlePanelTap = useCallback(
     (panelIndex: number) => {
-      if (phase !== "playing" || showingSequence) return;
+      if (phase !== "playing" || showingSequence || completedRef.current) return;
 
       setFlashPanel(panelIndex);
-      setTimeout(() => setFlashPanel(null), 150);
+      addTimer(() => setFlashPanel(null), 150);
       audioManager.sequenceTone(panelIndex);
 
       if (panelIndex === sequence[playerIndex]) {
@@ -81,24 +105,26 @@ export default function SequenceMode({ onComplete, phase }: SequenceModeProps) {
         setPlayerIndex(nextIndex);
 
         if (nextIndex >= sequence.length) {
-          // Level complete — add one more
           haptic.success();
           const newSeq = [...sequence, Math.floor(Math.random() * GRID_SIZE)];
           setSequence(newSeq);
           setLevel(newSeq.length);
-          setTimeout(() => showSequence(newSeq), 600);
+          setShowingSequence(true); // lock input immediately
+          const signal = { aborted: false };
+          addTimer(() => {
+            if (!abortRef.current) showSequence(newSeq, signal);
+          }, 600);
         }
       } else {
-        // Wrong panel
         haptic.error();
         audioManager.tapFail();
         setShake(true);
-        setTimeout(() => setShake(false), 400);
-        // Score is (level - INITIAL_LENGTH) because first round is "free"
-        setTimeout(() => onComplete(level - 1), 600);
+        addTimer(() => setShake(false), 400);
+        completedRef.current = true;
+        addTimer(() => onCompleteRef.current(level - 1), 600);
       }
     },
-    [phase, showingSequence, sequence, playerIndex, level, onComplete, showSequence]
+    [phase, showingSequence, sequence, playerIndex, level, showSequence, addTimer]
   );
 
   if (phase !== "playing") return null;

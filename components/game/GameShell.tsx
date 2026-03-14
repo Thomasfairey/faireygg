@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence } from "framer-motion";
 import { ModeDefinition } from "@/lib/game/modes";
@@ -15,7 +15,6 @@ interface GameShellProps {
   mode: ModeDefinition;
   children: (props: {
     onComplete: (score: number, details?: Record<string, number>) => void;
-    onFail: () => void;
     phase: Phase;
   }) => React.ReactNode;
 }
@@ -27,6 +26,8 @@ export default function GameShell({ mode, children }: GameShellProps) {
   const [isNewBest, setIsNewBest] = useState(false);
   const [rankedUp, setRankedUp] = useState(false);
   const [newRankName, setNewRankName] = useState<string>();
+  const [countdownKey, setCountdownKey] = useState(0); // force remount
+  const completedRef = useRef(false);
   const recordResult = useProgressionStore((s) => s.recordResult);
 
   const handleCountdownComplete = useCallback(() => {
@@ -35,6 +36,10 @@ export default function GameShell({ mode, children }: GameShellProps) {
 
   const handleComplete = useCallback(
     (score: number, details?: Record<string, number>) => {
+      // Guard against double-completion
+      if (completedRef.current) return;
+      completedRef.current = true;
+
       setScore(score);
       const result: GameResult = {
         mode: mode.id,
@@ -56,14 +61,13 @@ export default function GameShell({ mode, children }: GameShellProps) {
     [mode, recordResult]
   );
 
-  const handleFail = useCallback(() => {
-    // Screen shake is handled by the mode component
-  }, []);
-
   const handlePlayAgain = useCallback(() => {
+    completedRef.current = false;
+    setScore(0);
     setIsNewBest(false);
     setRankedUp(false);
     setNewRankName(undefined);
+    setCountdownKey((k) => k + 1); // force CountdownOverlay remount
     setPhase("countdown");
   }, []);
 
@@ -84,12 +88,12 @@ export default function GameShell({ mode, children }: GameShellProps) {
       )}
 
       {/* Game content */}
-      {children({ onComplete: handleComplete, onFail: handleFail, phase })}
+      {children({ onComplete: handleComplete, phase })}
 
       {/* Overlays */}
       <AnimatePresence>
         {phase === "countdown" && (
-          <CountdownOverlay onComplete={handleCountdownComplete} />
+          <CountdownOverlay key={countdownKey} onComplete={handleCountdownComplete} />
         )}
       </AnimatePresence>
 

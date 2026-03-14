@@ -13,17 +13,21 @@ interface SpeedRoundModeProps {
 const TOTAL_TAPS = 5;
 
 export default function SpeedRoundMode({ onComplete, phase }: SpeedRoundModeProps) {
-  const [currentTap, setCurrentTap] = useState(0);
+  const [displayTap, setDisplayTap] = useState(0);
   const [started, setStarted] = useState(false);
-  const [tapTimes, setTapTimes] = useState<number[]>([]);
   const lastTapTime = useRef(0);
   const startTime = useRef(0);
+  const tapTimesRef = useRef<number[]>([]);
+  const currentTapRef = useRef(0);
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     if (phase === "playing") {
-      setCurrentTap(0);
+      setDisplayTap(0);
       setStarted(false);
-      setTapTimes([]);
+      tapTimesRef.current = [];
+      currentTapRef.current = 0;
     }
   }, [phase]);
 
@@ -32,11 +36,12 @@ export default function SpeedRoundMode({ onComplete, phase }: SpeedRoundModeProp
 
     const now = performance.now();
 
-    if (!started) {
+    if (currentTapRef.current === 0) {
       setStarted(true);
       startTime.current = now;
       lastTapTime.current = now;
-      setCurrentTap(1);
+      currentTapRef.current = 1;
+      setDisplayTap(1);
       audioManager.tapSuccess();
       haptic.light();
       return;
@@ -44,30 +49,29 @@ export default function SpeedRoundMode({ onComplete, phase }: SpeedRoundModeProp
 
     const elapsed = Math.round(now - lastTapTime.current);
     lastTapTime.current = now;
-    const newTapTimes = [...tapTimes, elapsed];
-    setTapTimes(newTapTimes);
+    tapTimesRef.current.push(elapsed);
 
-    const next = currentTap + 1;
-    setCurrentTap(next);
+    currentTapRef.current += 1;
+    setDisplayTap(currentTapRef.current);
     audioManager.tapSuccess();
     haptic.light();
 
-    if (next >= TOTAL_TAPS) {
+    if (currentTapRef.current >= TOTAL_TAPS) {
       const totalMs = Math.round(now - startTime.current);
-      const avg = Math.round(newTapTimes.reduce((a, b) => a + b, 0) / newTapTimes.length);
-      onComplete(totalMs, { averageGap: avg });
+      const times = tapTimesRef.current;
+      const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
+      onCompleteRef.current(totalMs, { averageGap: avg });
     }
-  }, [phase, started, currentTap, tapTimes, onComplete]);
+  }, [phase]);
 
   if (phase !== "playing") return null;
 
-  const progress = currentTap / TOTAL_TAPS;
+  const progress = displayTap / TOTAL_TAPS;
 
   return (
     <div
       className="fixed inset-0 flex flex-col items-center justify-center gap-8 cursor-pointer"
-      onMouseDown={handleTap}
-      onTouchStart={(e) => {
+      onPointerDown={(e) => {
         e.preventDefault();
         handleTap();
       }}
@@ -78,18 +82,18 @@ export default function SpeedRoundMode({ onComplete, phase }: SpeedRoundModeProp
           <motion.div
             key={i}
             animate={{
-              scale: i < currentTap ? 1 : i === currentTap ? [1, 1.3, 1] : 0.7,
-              opacity: i < currentTap ? 1 : i === currentTap ? 1 : 0.2,
+              scale: i < displayTap ? 1 : i === displayTap ? [1, 1.3, 1] : 0.7,
+              opacity: i < displayTap ? 1 : i === displayTap ? 1 : 0.2,
             }}
             transition={
-              i === currentTap
+              i === displayTap
                 ? { scale: { duration: 0.8, repeat: Infinity } }
                 : { type: "spring", stiffness: 400, damping: 25 }
             }
             className="w-4 h-4 rounded-full"
             style={{
-              background: i < currentTap ? "#ff00e5" : i === currentTap ? "#ff00e5" : "rgba(255,255,255,0.15)",
-              boxShadow: i < currentTap ? "0 0 12px #ff00e5" : "none",
+              background: i < displayTap ? "#ff00e5" : i === displayTap ? "#ff00e5" : "rgba(255,255,255,0.15)",
+              boxShadow: i < displayTap ? "0 0 12px #ff00e5" : "none",
             }}
           />
         ))}
@@ -116,12 +120,12 @@ export default function SpeedRoundMode({ onComplete, phase }: SpeedRoundModeProp
             </div>
           ) : (
             <motion.div
-              key={currentTap}
+              key={displayTap}
               initial={{ scale: 1.5, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               className="text-5xl font-bold text-neon-magenta text-glow-magenta tabular-nums"
             >
-              {currentTap}/{TOTAL_TAPS}
+              {displayTap}/{TOTAL_TAPS}
             </motion.div>
           )}
         </div>

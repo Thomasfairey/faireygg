@@ -1,6 +1,7 @@
 import { useSettingsStore } from "./store/settingsStore";
 
 function vibrate(pattern: number | number[]) {
+  if (typeof navigator === "undefined") return;
   if (!useSettingsStore.getState().hapticsEnabled) return;
   navigator.vibrate?.(pattern);
 }

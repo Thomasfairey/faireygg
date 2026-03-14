@@ -5,13 +5,25 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MODES, GameMode } from "@/lib/game/modes";
 import { useProgressionStore } from "@/lib/store/progressionStore";
 import { getScoreLabel } from "@/lib/game/scoring";
+import { useHydrated } from "@/lib/hooks/useHydrated";
 
 export default function LeaderboardPage() {
+  const hydrated = useHydrated();
   const [activeMode, setActiveMode] = useState<GameMode>("classic");
-  const getLeaderboard = useProgressionStore((s) => s.getLeaderboard);
+  const leaderboards = useProgressionStore((s) => s.leaderboards);
 
-  const mode = MODES.find((m) => m.id === activeMode)!;
-  const entries = getLeaderboard(activeMode);
+  const mode = MODES.find((m) => m.id === activeMode);
+  if (!mode) return null;
+
+  const entries = leaderboards[activeMode] ?? [];
+
+  if (!hydrated) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="text-white/20 text-sm">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 overflow-y-auto">
@@ -84,7 +96,6 @@ export default function LeaderboardPage() {
                     ${i === 0 ? mode.glowClass : ""}
                   `}
                 >
-                  {/* Position */}
                   <div
                     className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold"
                     style={{
@@ -102,7 +113,6 @@ export default function LeaderboardPage() {
                     {i + 1}
                   </div>
 
-                  {/* Score */}
                   <div className="flex-1">
                     <div
                       className="font-bold tabular-nums"
@@ -112,7 +122,6 @@ export default function LeaderboardPage() {
                     </div>
                   </div>
 
-                  {/* Date */}
                   <div className="text-xs text-white/20 tabular-nums">
                     {new Date(entry.date).toLocaleDateString("en-GB", {
                       day: "numeric",

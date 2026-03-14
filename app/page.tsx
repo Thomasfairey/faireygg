@@ -7,8 +7,10 @@ import ModeCard from "@/components/menu/ModeCard";
 import RankBadge from "@/components/menu/RankBadge";
 import { useSettingsStore } from "@/lib/store/settingsStore";
 import { audioManager } from "@/lib/audio/AudioManager";
+import { useHydrated } from "@/lib/hooks/useHydrated";
 
 export default function Home() {
+  const hydrated = useHydrated();
   const totalGamesPlayed = useProgressionStore((s) => s.totalGamesPlayed);
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
   const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
@@ -50,8 +52,8 @@ export default function Home() {
           ))}
         </div>
 
-        {/* Quick Stats */}
-        {totalGamesPlayed > 0 && (
+        {/* Quick Stats — only show after hydration to avoid mismatch */}
+        {hydrated && totalGamesPlayed > 0 && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -75,22 +77,22 @@ export default function Home() {
               audioManager.uiClick();
             }}
             className={`text-xs px-3 py-1.5 rounded-lg border cursor-pointer transition-colors ${
-              soundEnabled
+              hydrated && soundEnabled
                 ? "border-white/20 text-white/50"
                 : "border-white/10 text-white/20"
             }`}
           >
-            {soundEnabled ? "🔊 Sound" : "🔇 Muted"}
+            {hydrated ? (soundEnabled ? "🔊 Sound" : "🔇 Muted") : "🔊 Sound"}
           </button>
           <button
             onClick={toggleHaptics}
             className={`text-xs px-3 py-1.5 rounded-lg border cursor-pointer transition-colors ${
-              hapticsEnabled
+              hydrated && hapticsEnabled
                 ? "border-white/20 text-white/50"
                 : "border-white/10 text-white/20"
             }`}
           >
-            {hapticsEnabled ? "📳 Haptics" : "📴 No Haptics"}
+            {hydrated ? (hapticsEnabled ? "📳 Haptics" : "📴 No Haptics") : "📳 Haptics"}
           </button>
         </motion.div>
       </div>
