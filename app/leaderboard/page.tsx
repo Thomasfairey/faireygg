@@ -16,6 +16,27 @@ interface GlobalEntry {
   score: number;
 }
 
+function sanitizeDisplayName(name: string): string {
+  return name
+    .replace(/[\u200B-\u200D\uFEFF\u202A-\u202E\u2066-\u2069]/g, "")
+    .replace(/[\u0300-\u036F]/g, "")
+    .slice(0, 20);
+}
+
+function validateEntries(data: unknown): GlobalEntry[] {
+  if (!data || typeof data !== "object") return [];
+  const obj = data as Record<string, unknown>;
+  if (!Array.isArray(obj.entries)) return [];
+  if (obj.entries.length > 200) return obj.entries.slice(0, 100);
+  return obj.entries.filter(
+    (e: unknown): e is GlobalEntry =>
+      typeof e === "object" && e !== null &&
+      typeof (e as GlobalEntry).username === "string" &&
+      typeof (e as GlobalEntry).score === "number" &&
+      isFinite((e as GlobalEntry).score)
+  );
+}
+
 export default function LeaderboardPage() {
   const hydrated = useHydrated();
   const [activeMode, setActiveMode] = useState<GameMode>("classic");
@@ -33,9 +54,12 @@ export default function LeaderboardPage() {
     if (view !== "global") return;
     setLoading(true);
     fetch(`/api/leaderboard?mode=${activeMode}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
       .then((data) => {
-        setGlobalEntries(data.entries ?? []);
+        setGlobalEntries(validateEntries(data));
         setLoading(false);
       })
       .catch(() => {
@@ -167,7 +191,7 @@ export default function LeaderboardPage() {
                       <div
                         className={`font-bold text-sm truncate ${entry.username === username ? "text-neon-cyan" : "text-white/70"}`}
                       >
-                        {entry.username}
+                        {sanitizeDisplayName(entry.username)}
                         {entry.username === username && (
                           <span className="text-[9px] text-neon-cyan/50 ml-1.5">you</span>
                         )}

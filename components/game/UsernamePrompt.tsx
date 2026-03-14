@@ -18,10 +18,15 @@ export default function UsernamePrompt({ onComplete }: UsernamePromptProps) {
   }, []);
 
   const handleSubmit = () => {
-    const trimmed = value.trim();
-    if (trimmed.length < 1) return;
-    setUsername(trimmed);
-    onComplete(trimmed);
+    const sanitized = value
+      .trim()
+      .replace(/[\u200B-\u200D\uFEFF\u202A-\u202E\u2066-\u2069]/g, "")
+      .replace(/[\u0300-\u036F]/g, "")
+      .replace(/[<>"'&\\|]/g, "")
+      .slice(0, 20);
+    if (sanitized.length < 2) return;
+    setUsername(sanitized);
+    onComplete(sanitized);
   };
 
   return (
@@ -53,9 +58,9 @@ export default function UsernamePrompt({ onComplete }: UsernamePromptProps) {
 
         <button
           onClick={handleSubmit}
-          disabled={value.trim().length < 1}
+          disabled={value.trim().length < 2}
           className={`w-full py-3 rounded-xl font-bold text-sm uppercase tracking-wider cursor-pointer transition-all ${
-            value.trim().length > 0
+            value.trim().length >= 2
               ? "bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/20"
               : "bg-white/[0.03] border border-white/[0.06] text-white/20 cursor-not-allowed"
           }`}
@@ -63,7 +68,7 @@ export default function UsernamePrompt({ onComplete }: UsernamePromptProps) {
           Lock In
         </button>
 
-        <div className="text-[9px] text-white/15">max 20 characters</div>
+        <div className="text-[9px] text-white/15">2–20 characters</div>
       </motion.div>
     </div>
   );
