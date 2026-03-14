@@ -37,7 +37,10 @@ export default function LeaderboardPage() {
         </motion.h1>
 
         {/* Mode tabs */}
-        <div className="flex gap-1 w-full max-w-sm overflow-x-auto pb-2 mb-4 scrollbar-hide">
+        {/* UX-09: Scroll hint with fade edges */}
+        <div className="relative w-full max-w-sm mb-4">
+          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-space-900 to-transparent z-10 pointer-events-none" />
+        <div className="flex gap-1 w-full overflow-x-auto pb-2 scrollbar-hide">
           {MODES.map((m) => (
             <button
               key={m.id}
@@ -65,6 +68,7 @@ export default function LeaderboardPage() {
               {m.icon} {m.name}
             </button>
           ))}
+        </div>
         </div>
 
         {/* Leaderboard */}

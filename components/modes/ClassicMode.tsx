@@ -28,6 +28,7 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
   const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recoveryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedRef = useRef(false);
+  const readyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
   const zoneRef = useRef<HTMLDivElement>(null);
@@ -36,6 +37,7 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     if (shakeTimer.current) clearTimeout(shakeTimer.current);
     if (recoveryTimer.current) clearTimeout(recoveryTimer.current);
+    if (readyTimeoutRef.current) clearTimeout(readyTimeoutRef.current);
     if (tensionStop.current) { tensionStop.current(); tensionStop.current = null; }
   }, []);
 
@@ -51,6 +53,15 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
       readyAt.current = performance.now();
       tapPhaseRef.current = "ready";
       setTapPhase("ready");
+      // BUG-03: Auto-fail after 10s if user never taps
+      readyTimeoutRef.current = setTimeout(() => {
+        if (tapPhaseRef.current === "ready" && !completedRef.current) {
+          completedRef.current = true;
+          audioManager.tapFail();
+          haptic.error();
+          onCompleteRef.current(10000);
+        }
+      }, 10000);
     }, delay);
   }, [difficulty.minWait, difficulty.maxWait]);
 

@@ -11,7 +11,13 @@ interface SequenceModeProps {
 }
 
 const GRID_SIZE = 4;
-const PANEL_COLORS = ["#00f0ff", "#ff00e5", "#00ff88", "#ffaa00"];
+// DES-01 & BUG-02: Distinct, visible base colors + bright active states
+const PANEL_COLORS = [
+  { base: "#0e4a6e", active: "#00f0ff", border: "#00f0ff" }, // Cyan
+  { base: "#5c1a5c", active: "#ff00e5", border: "#ff00e5" }, // Magenta
+  { base: "#0e4a2a", active: "#00ff88", border: "#00ff88" }, // Green
+  { base: "#5c3a0e", active: "#ffaa00", border: "#ffaa00" }, // Amber
+];
 const INITIAL_LENGTH = 3;
 
 export default function SequenceMode({ onComplete, phase }: SequenceModeProps) {
@@ -59,10 +65,10 @@ export default function SequenceMode({ onComplete, phase }: SequenceModeProps) {
         if (abortSignal.aborted) return;
         setActivePanel(seq[i]);
         audioManager.sequenceTone(seq[i]);
-        await new Promise((r) => { addTimer(r as () => void, 500); });
+        await new Promise((r) => { addTimer(r as () => void, 600); });
         if (abortSignal.aborted) return;
         setActivePanel(null);
-        await new Promise((r) => { addTimer(r as () => void, 200); });
+        await new Promise((r) => { addTimer(r as () => void, 250); });
       }
 
       if (!abortSignal.aborted) {
@@ -95,8 +101,9 @@ export default function SequenceMode({ onComplete, phase }: SequenceModeProps) {
     (panelIndex: number) => {
       if (phase !== "playing" || showingSequence || completedRef.current) return;
 
+      // UX-04: Strong visual flash feedback on tap
       setFlashPanel(panelIndex);
-      addTimer(() => setFlashPanel(null), 150);
+      addTimer(() => setFlashPanel(null), 200);
       audioManager.sequenceTone(panelIndex);
 
       if (panelIndex === sequence[playerIndex]) {
@@ -109,7 +116,7 @@ export default function SequenceMode({ onComplete, phase }: SequenceModeProps) {
           const newSeq = [...sequence, Math.floor(Math.random() * GRID_SIZE)];
           setSequence(newSeq);
           setLevel(newSeq.length);
-          setShowingSequence(true); // lock input immediately
+          setShowingSequence(true);
           const signal = { aborted: false };
           addTimer(() => {
             if (!abortRef.current) showSequence(newSeq, signal);
@@ -152,27 +159,31 @@ export default function SequenceMode({ onComplete, phase }: SequenceModeProps) {
         <div className="text-sm text-neon-purple/60">Your turn</div>
       )}
 
-      {/* Grid */}
-      <div className="grid grid-cols-2 gap-3 w-64">
+      {/* Grid — high contrast pads with distinct colors */}
+      <div className="grid grid-cols-2 gap-4 w-72">
         {Array.from({ length: GRID_SIZE }).map((_, i) => {
-          const isActive = activePanel === i || flashPanel === i;
-          const color = PANEL_COLORS[i];
+          const isActive = activePanel === i;
+          const isFlash = flashPanel === i;
+          const isLit = isActive || isFlash;
+          const c = PANEL_COLORS[i];
           return (
             <motion.button
               key={i}
-              whileTap={!showingSequence ? { scale: 0.95 } : {}}
+              whileTap={!showingSequence ? { scale: 0.92 } : {}}
               animate={{
-                opacity: isActive ? 1 : 0.3,
-                scale: isActive ? 1.05 : 1,
+                scale: isLit ? 1.06 : 1,
               }}
               transition={{ type: "spring", stiffness: 400, damping: 25 }}
               onClick={() => handlePanelTap(i)}
               disabled={showingSequence}
               className="aspect-square rounded-2xl border-2 cursor-pointer"
               style={{
-                backgroundColor: isActive ? `${color}30` : `${color}08`,
-                borderColor: isActive ? color : `${color}30`,
-                boxShadow: isActive ? `0 0 30px ${color}60, inset 0 0 20px ${color}20` : "none",
+                backgroundColor: isLit ? `${c.active}40` : c.base,
+                borderColor: isLit ? c.active : `${c.border}40`,
+                boxShadow: isLit
+                  ? `0 0 40px ${c.active}70, 0 0 80px ${c.active}30, inset 0 0 25px ${c.active}30`
+                  : `inset 0 0 10px ${c.border}10`,
+                transition: isLit ? "none" : "all 0.2s ease",
               }}
             />
           );

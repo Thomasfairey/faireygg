@@ -10,10 +10,10 @@ interface ShrinkingTargetModeProps {
   phase: string;
 }
 
-const INITIAL_SIZE = 140;
+const INITIAL_SIZE = 160; // UX-05: Larger starting size
 const MIN_SIZE = 20;
-const SHRINK_SPEED = 35;
-const SPEED_INCREMENT = 3;
+const SHRINK_SPEED = 22; // UX-05: Slower initial shrink for approachable first experience
+const SPEED_INCREMENT = 4; // Ramps up faster to maintain challenge
 
 export default function ShrinkingTargetMode({ onComplete, phase }: ShrinkingTargetModeProps) {
   const [size, setSize] = useState(INITIAL_SIZE);

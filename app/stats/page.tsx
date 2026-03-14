@@ -117,8 +117,9 @@ export default function StatsPage() {
                     <div>
                       <div className="text-[10px] text-white/30 uppercase tracking-wider">Streak</div>
                       <div className="font-bold tabular-nums text-sm text-white/60">
-                        {modeStreak.current}d / {modeStreak.best}d
+                        🔥 {modeStreak.current}
                       </div>
+                      <div className="text-[9px] text-white/20">best: {modeStreak.best}</div>
                     </div>
                   </div>
                 ) : (

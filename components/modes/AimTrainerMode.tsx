@@ -17,7 +17,9 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
   const [target, setTarget] = useState({ x: 50, y: 50, key: 0 });
   const [displayHits, setDisplayHits] = useState(0);
   const [displayAvg, setDisplayAvg] = useState<number | null>(null);
+  const [missCount, setMissCount] = useState(0);
   const [shake, setShake] = useState(false);
+  const missRef = useRef(0);
   const lastHitTime = useRef(0);
   const hitRef = useRef(0);
   const timesRef = useRef<number[]>([]);
@@ -40,9 +42,11 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
   useEffect(() => {
     if (phase === "playing") {
       hitRef.current = 0;
+      missRef.current = 0;
       timesRef.current = [];
       setDisplayHits(0);
       setDisplayAvg(null);
+      setMissCount(0);
       setTarget(randomTarget(0));
       lastHitTime.current = performance.now();
     }
@@ -91,6 +95,8 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
         }
       } else {
         // Miss
+        missRef.current += 1;
+        setMissCount(missRef.current);
         audioManager.tapFail();
         haptic.error();
         setShake(true);
@@ -116,9 +122,9 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
     >
       <div ref={zoneRef} className="fixed inset-0" style={{ touchAction: "none" }}>
         {/* Header */}
-        <div className="fixed top-16 left-0 right-0 flex justify-center gap-8 z-10 pointer-events-none">
+        <div className="fixed top-14 left-0 right-0 flex justify-center gap-6 z-10 pointer-events-none">
           <div className="text-center">
-            <div className="text-[10px] text-white/30 uppercase tracking-widest">Target</div>
+            <div className="text-[10px] text-white/30 uppercase tracking-widest">Hits</div>
             <div className="text-xl font-bold text-neon-amber text-glow-amber tabular-nums">
               {displayHits}/{TOTAL_TARGETS}
             </div>
@@ -131,10 +137,25 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
               </div>
             </div>
           )}
+          {/* UX-11: Miss counter + accuracy */}
+          <div className="text-center">
+            <div className="text-[10px] text-white/30 uppercase tracking-widest">Misses</div>
+            <div className={`text-xl font-bold tabular-nums ${missCount > 0 ? "text-neon-red" : "text-white/30"}`}>
+              {missCount}
+            </div>
+          </div>
+          {displayHits > 0 && (
+            <div className="text-center">
+              <div className="text-[10px] text-white/30 uppercase tracking-widest">Accuracy</div>
+              <div className="text-xl font-bold text-white/50 tabular-nums">
+                {Math.round((displayHits / (displayHits + missCount)) * 100)}%
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Progress bar */}
-        <div className="fixed top-12 left-8 right-8 h-[2px] bg-white/10 rounded-full z-10 pointer-events-none">
+        <div className="fixed top-0 left-0 right-0 h-1 bg-white/[0.06] z-10 pointer-events-none">
           <motion.div
             className="h-full bg-neon-amber rounded-full"
             animate={{ width: `${(displayHits / TOTAL_TARGETS) * 100}%` }}

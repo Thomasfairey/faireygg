@@ -93,7 +93,7 @@ export default function Home() {
             🧠
           </motion.div>
           <h1 className="text-3xl font-bold shimmer-text tracking-tight">NEURAL PULSE</h1>
-          <p className="text-[10px] text-white/25 mt-1.5 uppercase tracking-[0.4em]">Deep Space Reflex System</p>
+          <p className="text-[10px] text-white/40 mt-1.5 uppercase tracking-[0.3em]">Deep Space Reflex System</p>
         </motion.div>
 
         {/* Rank Card */}
@@ -238,12 +238,27 @@ export default function Home() {
         </div>
 
         {/* Settings */}
+        {/* DES-04: Clear toggle visual states */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="mt-6 flex items-center gap-2">
-          <button onClick={() => { toggleSound(); audioManager.uiClick(); }} className={`text-[10px] px-3 py-1.5 rounded-full border cursor-pointer transition-all ${hydrated && soundEnabled ? "border-white/15 text-white/40" : "border-white/6 text-white/15"}`}>
-            {hydrated ? (soundEnabled ? "🔊 Sound" : "🔇 Muted") : "🔊 Sound"}
+          <button
+            onClick={() => { toggleSound(); audioManager.uiClick(); }}
+            className={`text-[10px] px-3 py-1.5 rounded-full border cursor-pointer transition-all ${
+              hydrated && soundEnabled
+                ? "border-neon-cyan/30 text-neon-cyan/60 bg-neon-cyan/5"
+                : "border-white/8 text-white/20 bg-transparent"
+            }`}
+          >
+            {hydrated ? (soundEnabled ? "🔊 Sound On" : "🔇 Muted") : "🔊 Sound On"}
           </button>
-          <button onClick={toggleHaptics} className={`text-[10px] px-3 py-1.5 rounded-full border cursor-pointer transition-all ${hydrated && hapticsEnabled ? "border-white/15 text-white/40" : "border-white/6 text-white/15"}`}>
-            {hydrated ? (hapticsEnabled ? "📳 Haptics" : "📴 Off") : "📳 Haptics"}
+          <button
+            onClick={toggleHaptics}
+            className={`text-[10px] px-3 py-1.5 rounded-full border cursor-pointer transition-all ${
+              hydrated && hapticsEnabled
+                ? "border-neon-cyan/30 text-neon-cyan/60 bg-neon-cyan/5"
+                : "border-white/8 text-white/20 bg-transparent"
+            }`}
+          >
+            {hydrated ? (hapticsEnabled ? "📳 Haptics On" : "📴 Off") : "📳 Haptics On"}
           </button>
         </motion.div>
 

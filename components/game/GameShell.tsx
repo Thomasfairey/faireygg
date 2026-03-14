@@ -46,8 +46,10 @@ export default function GameShell({ mode, children }: GameShellProps) {
   const [newRankName, setNewRankName] = useState<string>();
   const [dailyCompleted, setDailyCompleted] = useState(false);
   const [countdownKey, setCountdownKey] = useState(0);
+  const [wasFirstPlay, setWasFirstPlay] = useState(false);
   const completedRef = useRef(false);
   const recordResult = useProgressionStore((s) => s.recordResult);
+  const modeHistory = useProgressionStore((s) => s.history[mode.id] ?? []);
   const markDailyCompleted = useDailyChallengeStore((s) => s.markCompleted);
 
   const handleInstructionDismiss = useCallback(() => {
@@ -69,6 +71,9 @@ export default function GameShell({ mode, children }: GameShellProps) {
       completedRef.current = true;
 
       if (isFirstPlay) setFirstGameComplete();
+
+      // Track if this is the very first play for this mode (for suppressing "new best")
+      setWasFirstPlay(modeHistory.length === 0);
 
       setScore(score);
       const result: GameResult = {
@@ -121,14 +126,15 @@ export default function GameShell({ mode, children }: GameShellProps) {
   return (
     <div className="fixed inset-0 bg-space-900">
       {/* Back button — always visible for zen, during play for others */}
+      {/* UX-06: Larger back button (min 44x44px tap target) */}
       {(phase === "playing" || mode.isZen) && (
         <button
           onClick={handleExit}
-          className={`fixed top-[env(safe-area-inset-top,12px)] left-4 z-50 py-2 px-3 cursor-pointer transition-colors mt-2 ${
-            mode.isZen ? "text-indigo-300/30 hover:text-indigo-300/50 text-sm" : "text-white/20 hover:text-white/40 text-sm"
+          className={`fixed top-[env(safe-area-inset-top,8px)] left-2 z-50 w-12 h-12 flex items-center justify-center cursor-pointer transition-colors mt-1 rounded-full ${
+            mode.isZen ? "text-indigo-300/40 hover:text-indigo-300/60 hover:bg-indigo-300/10" : "text-white/30 hover:text-white/50 hover:bg-white/5"
           }`}
         >
-          ✕
+          <span className="text-lg">←</span>
         </button>
       )}
 
@@ -152,6 +158,7 @@ export default function GameShell({ mode, children }: GameShellProps) {
           mode={mode}
           score={score}
           isNewBest={isNewBest}
+          isFirstPlay={wasFirstPlay}
           rankedUp={rankedUp}
           newRankName={newRankName}
           dailyCompleted={dailyCompleted}

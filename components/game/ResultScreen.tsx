@@ -12,10 +12,59 @@ import GlowButton from "@/components/ui/GlowButton";
 import { audioManager } from "@/lib/audio/AudioManager";
 import { haptic } from "@/lib/haptics";
 
+// Score benchmarks for context
+const BENCHMARKS: Record<string, { avg: string; good: string }> = {
+  classic: { avg: "~280ms", good: "<220ms" },
+  "speed-round": { avg: "~2.5s", good: "<1.5s" },
+  "aim-trainer": { avg: "~380ms", good: "<280ms" },
+  sequence: { avg: "Level 5", good: "Level 8+" },
+  "shrinking-target": { avg: "8 hits", good: "15+ hits" },
+  inhibition: { avg: "4000 pts", good: "6000+ pts" },
+};
+
+// Varied motivational messages
+const MESSAGES: Record<string, string[]> = {
+  classic: [
+    "Lightning reflexes!", "Sharp as a laser!", "Neural link firing!", "Synapses blazing!",
+    "Great reflexes!", "Quick on the draw!", "Solid reaction!", "Nice timing!",
+    "Getting warmer!", "Keep at it!", "Room to improve!", "Try again, pilot!",
+  ],
+  default: [
+    "Impressive!", "Well played!", "Nice work!", "Solid run!",
+    "Getting better!", "Keep pushing!", "You can do better!", "Not bad, pilot!",
+  ],
+};
+
+function getVariedMessage(mode: string, score: number, modeId: string): string {
+  // Use the specific message functions for precise scoring
+  if (modeId === "classic" || modeId === "aim-trainer") return getReactionMessage(score);
+  if (modeId === "inhibition") return getInhibitionMessage(score);
+
+  const pool = MESSAGES[modeId] ?? MESSAGES.default;
+  // Pick based on score quality — first third are "great", middle are "ok", last are "needs work"
+  let tier: number;
+  if (modeId === "sequence") {
+    tier = score >= 8 ? 0 : score >= 5 ? 1 : 2;
+  } else if (modeId === "shrinking-target") {
+    tier = score >= 15 ? 0 : score >= 8 ? 1 : 2;
+  } else if (modeId === "speed-round") {
+    tier = score < 1500 ? 0 : score < 2500 ? 1 : 2;
+  } else {
+    tier = 1;
+  }
+  const third = Math.floor(pool.length / 3);
+  const start = tier * third;
+  const end = start + third;
+  const slice = pool.slice(start, end);
+  // Deterministic pick based on score to avoid same message
+  return slice[score % slice.length] ?? pool[0];
+}
+
 interface ResultScreenProps {
   mode: ModeDefinition;
   score: number;
   isNewBest: boolean;
+  isFirstPlay: boolean;
   rankedUp: boolean;
   newRankName?: string;
   dailyCompleted?: boolean;
@@ -27,6 +76,7 @@ export default function ResultScreen({
   mode,
   score,
   isNewBest,
+  isFirstPlay,
   rankedUp,
   newRankName,
   dailyCompleted,
@@ -38,30 +88,30 @@ export default function ResultScreen({
   const rank = getRankForGames(totalGamesPlayed);
   const lore = rankedUp && newRankName ? getLoreForRank(rank.id) : null;
 
+  // BUG-01 & UX-07: Suppress "new best" on first play or zero score
+  const showNewBest = isNewBest && !isFirstPlay && score > 0;
+
   useEffect(() => {
     if (hasPlayedSound.current) return;
     hasPlayedSound.current = true;
     if (rankedUp) {
       audioManager.rankUp();
       haptic.rankUp();
-    } else if (isNewBest) {
+    } else if (showNewBest) {
       audioManager.newRecord();
       haptic.success();
     } else {
       audioManager.tapSuccess();
     }
-  }, [isNewBest, rankedUp]);
+  }, [showNewBest, rankedUp]);
 
-  const message =
-    mode.id === "classic" || mode.id === "aim-trainer"
-      ? getReactionMessage(score)
-      : mode.id === "inhibition"
-        ? getInhibitionMessage(score)
-        : mode.id === "sequence"
-          ? score >= 8 ? "Incredible memory!" : score >= 5 ? "Sharp mind!" : "Keep practising!"
-          : mode.id === "shrinking-target"
-            ? score >= 15 ? "Eagle eye!" : score >= 8 ? "Nice focus!" : "Getting there!"
-            : score < 1500 ? "Blazing fast!" : score < 2500 ? "Solid speed!" : "Keep it up!";
+  const message = getVariedMessage(mode.name, score, mode.id);
+  const benchmark = BENCHMARKS[mode.id];
+
+  // UX-03: Format speed round as seconds
+  const displayScore = mode.id === "speed-round"
+    ? `${(score / 1000).toFixed(1)}s`
+    : getScoreLabel(score, mode.id);
 
   const handleShare = () => {
     shareResult({
@@ -70,7 +120,7 @@ export default function ResultScreen({
       message,
       rankName: rank.name,
       rankColor: rank.color,
-      isNewBest,
+      isNewBest: showNewBest,
     });
   };
 
@@ -106,9 +156,7 @@ export default function ResultScreen({
           >
             <div className="text-5xl mb-2">🚀</div>
             <div className="text-lg font-bold shimmer-text">RANK UP!</div>
-            <div className="text-neon-cyan text-glow-cyan font-bold text-xl mt-1">
-              {newRankName}
-            </div>
+            <div className="text-neon-cyan text-glow-cyan font-bold text-xl mt-1">{newRankName}</div>
             {lore && (
               <motion.div
                 initial={{ opacity: 0, y: 10 }}
@@ -122,7 +170,7 @@ export default function ResultScreen({
           </motion.div>
         )}
 
-        {isNewBest && !rankedUp && (
+        {showNewBest && !rankedUp && (
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
@@ -141,9 +189,17 @@ export default function ResultScreen({
           className="text-center"
         >
           <div className="text-6xl font-bold tabular-nums" style={{ color: mode.color }}>
-            {getScoreLabel(score, mode.id)}
+            {displayScore}
           </div>
           <div className="text-white/50 text-lg mt-2">{message}</div>
+
+          {/* UX-08: Score benchmark context */}
+          {benchmark && (
+            <div className="flex gap-4 justify-center mt-3 text-[10px] text-white/20">
+              <span>Avg: {benchmark.avg}</span>
+              <span>Good: {benchmark.good}</span>
+            </div>
+          )}
         </motion.div>
 
         {/* Actions */}
@@ -153,16 +209,9 @@ export default function ResultScreen({
           transition={{ delay: 0.3 }}
           className="flex flex-col gap-3 w-full mt-2"
         >
-          <GlowButton
-            onClick={onPlayAgain}
-            color={mode.color}
-            glowClass={mode.glowClass}
-            size="lg"
-            className="w-full"
-          >
+          <GlowButton onClick={onPlayAgain} color={mode.color} glowClass={mode.glowClass} size="lg" className="w-full">
             Play Again
           </GlowButton>
-
           <button
             onClick={handleShare}
             className="text-white/30 text-sm py-2 cursor-pointer hover:text-white/50 transition-colors flex items-center justify-center gap-2"
@@ -170,11 +219,7 @@ export default function ResultScreen({
             <span>Share Result</span>
             <span className="text-xs">↗</span>
           </button>
-
-          <button
-            onClick={onExit}
-            className="text-white/20 text-xs py-1 cursor-pointer hover:text-white/40 transition-colors"
-          >
+          <button onClick={onExit} className="text-white/20 text-xs py-1 cursor-pointer hover:text-white/40 transition-colors">
             Back to Menu
           </button>
         </motion.div>
