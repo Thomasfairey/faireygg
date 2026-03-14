@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist_Mono } from "next/font/google";
 import "./globals.css";
+import StarfieldCanvas from "@/components/layout/StarfieldCanvas";
+import NavBar from "@/components/menu/NavBar";
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -8,12 +10,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Reaction Time",
-  description: "Test your reaction speed",
+  title: "Neural Pulse",
+  description: "Test your reflexes in deep space",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Reaction Time",
+    title: "Neural Pulse",
   },
 };
 
@@ -23,6 +25,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
+  themeColor: "#030014",
 };
 
 export default function RootLayout({
@@ -32,8 +35,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${geistMono.variable} antialiased`}>
-        {children}
+      <body className={`${geistMono.variable} antialiased font-mono`}>
+        <StarfieldCanvas />
+        <div className="relative z-10">{children}</div>
+        <NavBar />
       </body>
     </html>
   );
