@@ -17,7 +17,9 @@ export default function LeaderboardPage() {
   const mode = MODES.find((m) => m.id === activeMode);
   if (!mode) return null;
 
-  const entries = leaderboards[activeMode] ?? [];
+  // BUG-001: Ensure we read from the correct mode key with proper type
+  const rawEntries = leaderboards[activeMode];
+  const entries = Array.isArray(rawEntries) ? rawEntries : [];
 
   if (!hydrated) {
     return (

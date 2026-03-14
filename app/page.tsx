@@ -243,11 +243,11 @@ export default function Home() {
         </div>
 
         {/* Settings */}
-        {/* DES-04: Clear toggle visual states */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="mt-6 flex items-center gap-2">
+        {/* ISSUE-003: Min 44px touch targets with clear active states */}
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="mt-6 flex items-center gap-3">
           <button
             onClick={() => { toggleSound(); audioManager.uiClick(); }}
-            className={`text-[10px] px-3 py-1.5 rounded-full border cursor-pointer transition-all ${
+            className={`text-[11px] px-4 py-2.5 min-h-[44px] rounded-full border cursor-pointer transition-all ${
               hydrated && soundEnabled
                 ? "border-neon-cyan/30 text-neon-cyan/60 bg-neon-cyan/5"
                 : "border-white/8 text-white/20 bg-transparent"
@@ -257,7 +257,7 @@ export default function Home() {
           </button>
           <button
             onClick={toggleHaptics}
-            className={`text-[10px] px-3 py-1.5 rounded-full border cursor-pointer transition-all ${
+            className={`text-[11px] px-4 py-2.5 min-h-[44px] rounded-full border cursor-pointer transition-all ${
               hydrated && hapticsEnabled
                 ? "border-neon-cyan/30 text-neon-cyan/60 bg-neon-cyan/5"
                 : "border-white/8 text-white/20 bg-transparent"

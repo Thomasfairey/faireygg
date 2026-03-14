@@ -87,6 +87,8 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
 
       if (tapPhaseRef.current === "waiting") {
         if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        if (readyTimeoutRef.current) clearTimeout(readyTimeoutRef.current);
+        if (tensionStop.current) { tensionStop.current(); tensionStop.current = null; }
         audioManager.tapFail();
         haptic.error();
         setShake(true);
@@ -95,6 +97,7 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
         setTapPhase("too-early");
         recoveryTimer.current = setTimeout(() => startWaiting(), 1200);
       } else if (tapPhaseRef.current === "ready") {
+        if (readyTimeoutRef.current) clearTimeout(readyTimeoutRef.current);
         const ms = Math.round(now - readyAt.current);
         completedRef.current = true;
         audioManager.tapSuccess();

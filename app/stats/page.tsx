@@ -110,10 +110,15 @@ export default function StatsPage() {
                     <div>
                       <div className="text-[10px] text-white/30 uppercase tracking-wider">Avg</div>
                       <div className="font-bold tabular-nums text-sm text-white/60">
-                        {getScoreLabel(
-                          Math.round(modeHistory.reduce((a, b) => a + b.score, 0) / modeHistory.length),
-                          mode.id
-                        )}
+                        {(() => {
+                          // ISSUE-005: Exclude timeout/penalty scores (10000ms) from average
+                          const valid = modeHistory.filter((h) => h.score < 9999);
+                          if (valid.length === 0) return "—";
+                          return getScoreLabel(
+                            Math.round(valid.reduce((a, b) => a + b.score, 0) / valid.length),
+                            mode.id
+                          );
+                        })()}
                       </div>
                     </div>
                     <div>
@@ -157,12 +162,15 @@ function MiniChart({
 
   const min = Math.min(...data);
   const max = Math.max(...data);
+  // BUG-003: If all values are identical (including all zeros), draw flat line at bottom
+  const allSame = min === max;
   const range = max - min || 1;
   const h = 40;
   const w = 260;
 
   const points = data.map((val, i) => {
     const x = (i / (data.length - 1)) * w;
+    if (allSame) return `${x},${h + 2}`; // flat line at bottom
     const normalized = (val - min) / range;
     const y = invert ? normalized * h : (1 - normalized) * h;
     return `${x},${y + 4}`;

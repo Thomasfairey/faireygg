@@ -54,8 +54,8 @@ export async function generateShareCard(data: ShareCardData): Promise<Blob> {
   // Subtitle
   ctx.font = "10px monospace";
   ctx.fillStyle = "#ffffff20";
-  ctx.letterSpacing = "4px";
-  ctx.fillText("DEEP SPACE REFLEX SYSTEM", W / 2, 105);
+  // letterSpacing not supported in all browsers — use spaced text instead
+  ctx.fillText("D E E P  S P A C E", W / 2, 105);
 
   // Mode icon + name
   ctx.font = "40px serif";
@@ -119,17 +119,22 @@ export async function generateShareCard(data: ShareCardData): Promise<Blob> {
   // URL
   ctx.font = "bold 14px monospace";
   ctx.fillStyle = "#ffffff40";
-  ctx.fillText("faireygg.vercel.app", W / 2, 710);
+  ctx.fillText("neuralpulse.gg", W / 2, 710);
 
   // Bottom branding
   ctx.font = "9px monospace";
   ctx.fillStyle = "#ffffff15";
   ctx.fillText("NEURAL PULSE · REFLEX TRAINING SYSTEM", W / 2, H - 40);
 
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      resolve(blob!);
-    }, "image/png");
+  return new Promise((resolve, reject) => {
+    try {
+      canvas.toBlob((blob) => {
+        if (blob) resolve(blob);
+        else reject(new Error("toBlob returned null"));
+      }, "image/png");
+    } catch (e) {
+      reject(e);
+    }
   });
 }
 

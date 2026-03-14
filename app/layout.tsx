@@ -12,6 +12,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Neural Pulse",
   description: "Test your reflexes in deep space",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

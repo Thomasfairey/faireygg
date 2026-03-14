@@ -19,7 +19,7 @@ export default function NavBar() {
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50">
       <div className="mx-auto max-w-lg">
-        <div className="flex items-center justify-around bg-space-900/90 backdrop-blur-xl border-t border-white/[0.06] px-2 pb-[env(safe-area-inset-bottom)] pt-1">
+        <div className="flex items-center justify-around bg-space-900/90 backdrop-blur-xl border-t border-white/[0.06] px-2 pt-1" style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}>
           {tabs.map((tab) => {
             const isActive = pathname === tab.path;
             return (

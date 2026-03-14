@@ -192,6 +192,14 @@ export default function ResultScreen({
           </motion.div>
         )}
 
+        {/* IMPROVE-002: Mode identity */}
+        {!rankedUp && (
+          <div className="flex items-center gap-2 text-white/25 text-xs">
+            <span>{mode.icon}</span>
+            <span className="uppercase tracking-wider">{mode.name}</span>
+          </div>
+        )}
+
         {/* Score */}
         <motion.div
           initial={{ y: 20, opacity: 0 }}
