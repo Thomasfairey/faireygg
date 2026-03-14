@@ -3,7 +3,9 @@ export type GameMode =
   | "speed-round"
   | "sequence"
   | "shrinking-target"
-  | "aim-trainer";
+  | "aim-trainer"
+  | "zen"
+  | "inhibition";
 
 export interface ModeDefinition {
   id: GameMode;
@@ -14,6 +16,7 @@ export interface ModeDefinition {
   glowClass: string;
   scoreUnit: string;
   scoreLowerIsBetter: boolean;
+  isZen?: boolean;
 }
 
 export const MODES: ModeDefinition[] = [
@@ -66,6 +69,27 @@ export const MODES: ModeDefinition[] = [
     glowClass: "box-glow-amber",
     scoreUnit: "ms avg",
     scoreLowerIsBetter: true,
+  },
+  {
+    id: "inhibition",
+    name: "Inhibition",
+    description: "Tap green, resist red",
+    icon: "🚫",
+    color: "#ff3355",
+    glowClass: "box-glow-red",
+    scoreUnit: "pts",
+    scoreLowerIsBetter: false,
+  },
+  {
+    id: "zen",
+    name: "Zen",
+    description: "No score. Just breathe and practice",
+    icon: "🌊",
+    color: "#6366f1",
+    glowClass: "box-glow-indigo",
+    scoreUnit: "",
+    scoreLowerIsBetter: false,
+    isZen: true,
   },
 ];
 

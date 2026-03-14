@@ -22,6 +22,10 @@ export function getScoreLabel(score: number, mode: GameMode): string {
       return `Level ${score}`;
     case "shrinking-target":
       return `${score} hits`;
+    case "inhibition":
+      return `${score} pts`;
+    case "zen":
+      return "";
   }
 }
 
@@ -32,6 +36,14 @@ export function getReactionMessage(ms: number): string {
   if (ms < 300) return "Great reflexes!";
   if (ms < 350) return "Nice!";
   if (ms < 400) return "Not bad";
+  return "Keep practising";
+}
+
+export function getInhibitionMessage(score: number): string {
+  if (score > 7000) return "Iron will!";
+  if (score > 5000) return "Total control!";
+  if (score > 3500) return "Strong discipline!";
+  if (score > 2000) return "Getting focused";
   return "Keep practising";
 }
 

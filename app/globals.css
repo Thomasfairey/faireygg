@@ -22,6 +22,7 @@
   --color-neon-green: #00ff88;
   --color-neon-red: #ff3355;
   --color-neon-amber: #ffaa00;
+  --color-neon-indigo: #6366f1;
 }
 
 * {
@@ -105,6 +106,18 @@ body {
 
 .box-glow-amber {
   box-shadow: 0 0 15px rgba(255, 170, 0, 0.4), 0 0 30px rgba(255, 170, 0, 0.2), inset 0 0 15px rgba(255, 170, 0, 0.1);
+}
+
+.box-glow-red {
+  box-shadow: 0 0 15px rgba(255, 51, 85, 0.4), 0 0 30px rgba(255, 51, 85, 0.2), inset 0 0 15px rgba(255, 51, 85, 0.1);
+}
+
+.box-glow-indigo {
+  box-shadow: 0 0 15px rgba(99, 102, 241, 0.4), 0 0 30px rgba(99, 102, 241, 0.2), inset 0 0 15px rgba(99, 102, 241, 0.1);
+}
+
+.text-glow-indigo {
+  text-shadow: 0 0 10px #6366f1, 0 0 20px #6366f1, 0 0 40px #6366f1;
 }
 
 .shimmer-text {

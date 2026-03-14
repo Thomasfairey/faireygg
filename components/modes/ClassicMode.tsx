@@ -4,6 +4,8 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { audioManager } from "@/lib/audio/AudioManager";
 import { haptic } from "@/lib/haptics";
+import { useProgressionStore } from "@/lib/store/progressionStore";
+import { getClassicDifficulty } from "@/lib/game/adaptiveDifficulty";
 
 type TapPhase = "waiting" | "ready" | "too-early";
 
@@ -19,6 +21,9 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
   const tapPhaseRef = useRef<TapPhase>("waiting");
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
+  const history = useProgressionStore((s) => s.history["classic"] ?? []);
+  const difficulty = getClassicDifficulty(history);
+  const tensionStop = useRef<(() => void) | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recoveryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -31,18 +36,23 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     if (shakeTimer.current) clearTimeout(shakeTimer.current);
     if (recoveryTimer.current) clearTimeout(recoveryTimer.current);
+    if (tensionStop.current) { tensionStop.current(); tensionStop.current = null; }
   }, []);
 
   const startWaiting = useCallback(() => {
     tapPhaseRef.current = "waiting";
     setTapPhase("waiting");
-    const delay = 1500 + Math.random() * 3500;
+    // Adaptive difficulty: tighter windows for better players
+    const delay = difficulty.minWait + Math.random() * (difficulty.maxWait - difficulty.minWait);
+    // Start tension sound
+    tensionStop.current = audioManager.classicTension();
     timeoutRef.current = setTimeout(() => {
+      if (tensionStop.current) { tensionStop.current(); tensionStop.current = null; }
       readyAt.current = performance.now();
       tapPhaseRef.current = "ready";
       setTapPhase("ready");
     }, delay);
-  }, []);
+  }, [difficulty.minWait, difficulty.maxWait]);
 
   useEffect(() => {
     if (phase === "playing") {
