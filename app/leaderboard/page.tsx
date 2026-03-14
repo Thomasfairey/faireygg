@@ -7,10 +7,12 @@ import { useProgressionStore } from "@/lib/store/progressionStore";
 import { getScoreLabel } from "@/lib/game/scoring";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 
+const EMPTY_OBJ = {} as Record<string, never>;
+
 export default function LeaderboardPage() {
   const hydrated = useHydrated();
   const [activeMode, setActiveMode] = useState<GameMode>("classic");
-  const leaderboards = useProgressionStore((s) => s.leaderboards ?? {});
+  const leaderboards = useProgressionStore((s) => s.leaderboards ?? EMPTY_OBJ);
 
   const mode = MODES.find((m) => m.id === activeMode);
   if (!mode) return null;

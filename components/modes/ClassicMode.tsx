@@ -6,6 +6,7 @@ import { audioManager } from "@/lib/audio/AudioManager";
 import { haptic } from "@/lib/haptics";
 import { useProgressionStore } from "@/lib/store/progressionStore";
 import { getClassicDifficulty } from "@/lib/game/adaptiveDifficulty";
+import { EMPTY_ARRAY } from "@/lib/store/stableDefaults";
 
 type TapPhase = "waiting" | "ready" | "too-early";
 
@@ -21,7 +22,7 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
   const tapPhaseRef = useRef<TapPhase>("waiting");
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
-  const history = useProgressionStore((s) => s.history["classic"] ?? []);
+  const history = useProgressionStore((s) => (s.history ?? {})["classic"] ?? EMPTY_ARRAY);
   const difficulty = getClassicDifficulty(history);
   const tensionStop = useRef<(() => void) | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);

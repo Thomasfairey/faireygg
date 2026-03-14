@@ -48,7 +48,7 @@ export default function GameShell({ mode, children }: GameShellProps) {
   const completedRef = useRef(false);
   const initializedRef = useRef(false);
   const recordResult = useProgressionStore((s) => s.recordResult);
-  const modeHistory = useProgressionStore((s) => (s.history ?? {})[mode.id] ?? []);
+  const modeHistoryLength = useProgressionStore((s) => ((s.history ?? {})[mode.id] ?? []).length);
   const markDailyCompleted = useDailyChallengeStore((s) => s.markCompleted);
 
   // Set initial phase after mount to avoid hydration issues with persist stores
@@ -84,7 +84,7 @@ export default function GameShell({ mode, children }: GameShellProps) {
 
       if (isFirstPlay) setFirstGameComplete();
 
-      setWasFirstPlay(modeHistory.length === 0);
+      setWasFirstPlay(modeHistoryLength === 0);
 
       setScore(score);
       const result: GameResult = {
@@ -111,7 +111,7 @@ export default function GameShell({ mode, children }: GameShellProps) {
 
       setPhase("result");
     },
-    [mode, recordResult, isFirstPlay, setFirstGameComplete, isDaily, dailyTarget, markDailyCompleted, modeHistory.length]
+    [mode, recordResult, isFirstPlay, setFirstGameComplete, isDaily, dailyTarget, markDailyCompleted, modeHistoryLength]
   );
 
   const handlePlayAgain = useCallback(() => {

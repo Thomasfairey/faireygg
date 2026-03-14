@@ -8,6 +8,8 @@ import { getScoreLabel } from "@/lib/game/scoring";
 import ProgressRing from "@/components/ui/ProgressRing";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 
+const EMPTY_OBJ = {} as Record<string, never>;
+
 const RANK_ICONS: Record<string, string> = {
   cadet: "🛰️",
   "co-pilot": "🌑",
@@ -20,9 +22,9 @@ const RANK_ICONS: Record<string, string> = {
 export default function StatsPage() {
   const hydrated = useHydrated();
   const totalGamesPlayed = useProgressionStore((s) => s.totalGamesPlayed);
-  const leaderboards = useProgressionStore((s) => s.leaderboards ?? {});
-  const history = useProgressionStore((s) => s.history ?? {});
-  const streaks = useProgressionStore((s) => s.streaks ?? {});
+  const leaderboards = useProgressionStore((s) => s.leaderboards ?? EMPTY_OBJ);
+  const history = useProgressionStore((s) => s.history ?? EMPTY_OBJ);
+  const streaks = useProgressionStore((s) => s.streaks ?? EMPTY_OBJ);
 
   const rank = getRankForGames(totalGamesPlayed);
   const nextRank = getNextRank(totalGamesPlayed);

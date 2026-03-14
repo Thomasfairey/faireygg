@@ -16,6 +16,7 @@ import { audioManager } from "@/lib/audio/AudioManager";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 import { haptic } from "@/lib/haptics";
 import ProgressRing from "@/components/ui/ProgressRing";
+import { EMPTY_OBJECT, EMPTY_ARRAY } from "@/lib/store/stableDefaults";
 
 const RANK_ICONS: Record<string, string> = {
   cadet: "🛰️",
@@ -30,13 +31,13 @@ export default function Home() {
   const hydrated = useHydrated();
   const router = useRouter();
   const totalGamesPlayed = useProgressionStore((s) => s.totalGamesPlayed);
-  const leaderboards = useProgressionStore((s) => s.leaderboards ?? {});
+  const leaderboards = useProgressionStore((s) => s.leaderboards ?? EMPTY_OBJECT);
   const soundEnabled = useSettingsStore((s) => s.soundEnabled);
   const hapticsEnabled = useSettingsStore((s) => s.hapticsEnabled);
   const toggleSound = useSettingsStore((s) => s.toggleSound);
   const toggleHaptics = useSettingsStore((s) => s.toggleHaptics);
   const hasCompletedFirstGame = useOnboardingStore((s) => s.hasCompletedFirstGame);
-  const completedDates = useDailyChallengeStore((s) => s.completedDates ?? []);
+  const completedDates = useDailyChallengeStore((s) => s.completedDates ?? EMPTY_ARRAY);
   const dailyStreak = useDailyChallengeStore((s) => s.currentStreak);
 
   const rank = getRankForGames(totalGamesPlayed);
