@@ -16,12 +16,16 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
   const [tapPhase, setTapPhase] = useState<TapPhase>("waiting");
   const [shake, setShake] = useState(false);
   const readyAt = useRef(0);
+  const tapPhaseRef = useRef<TapPhase>("waiting");
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const recoveryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const completedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const zoneRef = useRef<HTMLDivElement>(null);
 
   const clearAllTimers = useCallback(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
@@ -30,10 +34,12 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
   }, []);
 
   const startWaiting = useCallback(() => {
+    tapPhaseRef.current = "waiting";
     setTapPhase("waiting");
     const delay = 1500 + Math.random() * 3500;
     timeoutRef.current = setTimeout(() => {
       readyAt.current = performance.now();
+      tapPhaseRef.current = "ready";
       setTapPhase("ready");
     }, delay);
   }, []);
@@ -46,26 +52,38 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
     return clearAllTimers;
   }, [phase, startWaiting, clearAllTimers]);
 
-  const handleTap = useCallback(() => {
-    if (phase !== "playing" || completedRef.current) return;
+  // Native event listener — bypasses React synthetic events for lowest latency
+  useEffect(() => {
+    const el = zoneRef.current;
+    if (!el || phase !== "playing") return;
 
-    if (tapPhase === "waiting") {
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      audioManager.tapFail();
-      haptic.error();
-      setShake(true);
-      shakeTimer.current = setTimeout(() => setShake(false), 400);
-      setTapPhase("too-early");
-      recoveryTimer.current = setTimeout(() => startWaiting(), 1200);
-    } else if (tapPhase === "ready") {
-      const ms = Math.round(performance.now() - readyAt.current);
-      completedRef.current = true;
-      audioManager.tapSuccess();
-      haptic.success();
-      onCompleteRef.current(ms);
-    }
-    // "too-early" taps are silently ignored — recovery timer will restart
-  }, [tapPhase, phase, startWaiting]);
+    const handler = (e: PointerEvent) => {
+      const now = performance.now(); // FIRST — capture time immediately
+      e.preventDefault();
+
+      if (phaseRef.current !== "playing" || completedRef.current) return;
+
+      if (tapPhaseRef.current === "waiting") {
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        audioManager.tapFail();
+        haptic.error();
+        setShake(true);
+        shakeTimer.current = setTimeout(() => setShake(false), 400);
+        tapPhaseRef.current = "too-early";
+        setTapPhase("too-early");
+        recoveryTimer.current = setTimeout(() => startWaiting(), 1200);
+      } else if (tapPhaseRef.current === "ready") {
+        const ms = Math.round(now - readyAt.current);
+        completedRef.current = true;
+        audioManager.tapSuccess();
+        haptic.success();
+        onCompleteRef.current(ms);
+      }
+    };
+
+    el.addEventListener("pointerdown", handler, { capture: true, passive: false });
+    return () => el.removeEventListener("pointerdown", handler, true);
+  }, [phase, startWaiting]);
 
   if (phase !== "playing") return null;
 
@@ -91,18 +109,16 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
           : { x: 0 }
       }
       className="fixed inset-0 flex items-center justify-center"
-      onPointerDown={(e) => {
-        e.preventDefault();
-        handleTap();
-      }}
     >
       <div
+        ref={zoneRef}
         className={`
           w-[80vw] h-[50vh] max-w-md rounded-3xl
           flex flex-col items-center justify-center gap-4
           border-2 ${borderColor} ${bgColor}
           transition-all duration-300 cursor-pointer
         `}
+        style={{ touchAction: "none" }}
       >
         {tapPhase === "waiting" && (
           <>

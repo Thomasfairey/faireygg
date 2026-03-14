@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { audioManager } from "@/lib/audio/AudioManager";
 import { haptic } from "@/lib/haptics";
@@ -21,6 +21,9 @@ export default function SpeedRoundMode({ onComplete, phase }: SpeedRoundModeProp
   const currentTapRef = useRef(0);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const phaseRef = useRef(phase);
+  phaseRef.current = phase;
+  const zoneRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (phase === "playing") {
@@ -31,37 +34,47 @@ export default function SpeedRoundMode({ onComplete, phase }: SpeedRoundModeProp
     }
   }, [phase]);
 
-  const handleTap = useCallback(() => {
-    if (phase !== "playing") return;
+  // Native event listener for lowest latency
+  useEffect(() => {
+    const el = zoneRef.current;
+    if (!el || phase !== "playing") return;
 
-    const now = performance.now();
+    const handler = (e: PointerEvent) => {
+      const now = performance.now(); // FIRST
+      e.preventDefault();
 
-    if (currentTapRef.current === 0) {
-      setStarted(true);
-      startTime.current = now;
+      if (phaseRef.current !== "playing") return;
+
+      if (currentTapRef.current === 0) {
+        setStarted(true);
+        startTime.current = now;
+        lastTapTime.current = now;
+        currentTapRef.current = 1;
+        setDisplayTap(1);
+        audioManager.tapSuccess();
+        haptic.light();
+        return;
+      }
+
+      const elapsed = Math.round(now - lastTapTime.current);
       lastTapTime.current = now;
-      currentTapRef.current = 1;
-      setDisplayTap(1);
+      tapTimesRef.current.push(elapsed);
+
+      currentTapRef.current += 1;
+      setDisplayTap(currentTapRef.current);
       audioManager.tapSuccess();
       haptic.light();
-      return;
-    }
 
-    const elapsed = Math.round(now - lastTapTime.current);
-    lastTapTime.current = now;
-    tapTimesRef.current.push(elapsed);
+      if (currentTapRef.current >= TOTAL_TAPS) {
+        const totalMs = Math.round(now - startTime.current);
+        const times = tapTimesRef.current;
+        const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
+        onCompleteRef.current(totalMs, { averageGap: avg });
+      }
+    };
 
-    currentTapRef.current += 1;
-    setDisplayTap(currentTapRef.current);
-    audioManager.tapSuccess();
-    haptic.light();
-
-    if (currentTapRef.current >= TOTAL_TAPS) {
-      const totalMs = Math.round(now - startTime.current);
-      const times = tapTimesRef.current;
-      const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
-      onCompleteRef.current(totalMs, { averageGap: avg });
-    }
+    el.addEventListener("pointerdown", handler, { capture: true, passive: false });
+    return () => el.removeEventListener("pointerdown", handler, true);
   }, [phase]);
 
   if (phase !== "playing") return null;
@@ -70,11 +83,9 @@ export default function SpeedRoundMode({ onComplete, phase }: SpeedRoundModeProp
 
   return (
     <div
+      ref={zoneRef}
       className="fixed inset-0 flex flex-col items-center justify-center gap-8 cursor-pointer"
-      onPointerDown={(e) => {
-        e.preventDefault();
-        handleTap();
-      }}
+      style={{ touchAction: "none" }}
     >
       {/* Progress dots */}
       <div className="flex gap-3">

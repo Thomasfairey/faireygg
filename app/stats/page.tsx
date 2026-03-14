@@ -9,10 +9,10 @@ import ProgressRing from "@/components/ui/ProgressRing";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 
 const RANK_ICONS: Record<string, string> = {
-  cadet: "🔰",
-  "co-pilot": "✈️",
+  cadet: "🛰️",
+  "co-pilot": "🌑",
   pilot: "🚀",
-  commander: "⭐",
+  commander: "🌟",
   "test-pilot": "🛸",
   lightspeed: "💫",
 };
@@ -55,7 +55,7 @@ export default function StatsPage() {
         >
           <div className="flex items-center gap-5">
             <ProgressRing progress={progress} size={72} strokeWidth={4} color={rank.color}>
-              <span className="text-2xl">{RANK_ICONS[rank.id] ?? "🔰"}</span>
+              <span className="text-2xl">{RANK_ICONS[rank.id] ?? "🛰️"}</span>
             </ProgressRing>
             <div>
               <div className={`font-bold text-xl ${rank.glowClass}`} style={{ color: rank.color }}>
@@ -125,7 +125,6 @@ export default function StatsPage() {
                   <div className="text-xs text-white/20 text-center py-2">No games yet</div>
                 )}
 
-                {/* Mini chart */}
                 {modeHistory.length > 1 && (
                   <MiniChart
                     data={modeHistory.slice(-20).map((h) => h.score)}
