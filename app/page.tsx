@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { MODES } from "@/lib/game/modes";
@@ -11,7 +11,7 @@ import { getScoreLabel } from "@/lib/game/scoring";
 import { useSettingsStore } from "@/lib/store/settingsStore";
 import { useOnboardingStore } from "@/lib/store/onboardingStore";
 import { useDailyChallengeStore } from "@/lib/store/dailyChallengeStore";
-import { getDailyChallenge } from "@/lib/game/dailyChallenge";
+import { DailyChallenge, getDailyChallenge } from "@/lib/game/dailyChallenge";
 import { audioManager } from "@/lib/audio/AudioManager";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 import { haptic } from "@/lib/haptics";
@@ -43,9 +43,15 @@ export default function Home() {
   const nextRank = getNextRank(totalGamesPlayed);
   const progress = getRankProgress(totalGamesPlayed);
 
-  const daily = getDailyChallenge();
-  const today = new Date().toLocaleDateString("en-CA");
-  const dailyDone = hydrated && completedDates.includes(today);
+  // Compute daily challenge only on client to avoid hydration mismatch
+  // (static page is built at deploy time with a different date)
+  const [daily, setDaily] = useState<DailyChallenge | null>(null);
+  const [today, setToday] = useState("");
+  useEffect(() => {
+    setDaily(getDailyChallenge());
+    setToday(new Date().toLocaleDateString("en-CA"));
+  }, []);
+  const dailyDone = hydrated && daily !== null && completedDates.includes(today);
 
   // Zero-friction first play: redirect new users to Classic
   useEffect(() => {
@@ -138,6 +144,7 @@ export default function Home() {
         </motion.div>
 
         {/* Daily Challenge */}
+        {daily && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -183,6 +190,7 @@ export default function Home() {
             </div>
           </button>
         </motion.div>
+        )}
 
         {/* Section Label */}
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.2 }} className="w-full max-w-sm flex items-center gap-3 mb-3">
