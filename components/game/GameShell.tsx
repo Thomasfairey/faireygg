@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence } from "framer-motion";
 import { ModeDefinition } from "@/lib/game/modes";
@@ -26,20 +26,18 @@ interface GameShellProps {
 export default function GameShell({ mode, children }: GameShellProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const isFirstPlay = searchParams.get("first") === "true";
-  const dailyTarget = searchParams.get("target");
-  const isDaily = searchParams.get("daily") === "true" && dailyTarget;
+  const isFirstPlay = searchParams?.get("first") === "true";
+  const dailyTarget = searchParams?.get("target");
+  const isDaily = searchParams?.get("daily") === "true" && dailyTarget;
 
-  const hasPlayed = useOnboardingStore((s) => s.hasPlayed);
+  const playedModes = useOnboardingStore((s) => s.playedModes);
   const markPlayed = useOnboardingStore((s) => s.markPlayed);
   const setFirstGameComplete = useOnboardingStore((s) => s.setFirstGameComplete);
 
-  const needsInstruction = !hasPlayed(mode.id);
   const skipCountdown = mode.isZen;
+  const needsInstruction = !playedModes.includes(mode.id);
 
-  const [phase, setPhase] = useState<Phase>(
-    needsInstruction ? "instruction" : skipCountdown ? "playing" : "countdown"
-  );
+  const [phase, setPhase] = useState<Phase>("countdown");
   const [score, setScore] = useState(0);
   const [isNewBest, setIsNewBest] = useState(false);
   const [rankedUp, setRankedUp] = useState(false);
@@ -48,9 +46,23 @@ export default function GameShell({ mode, children }: GameShellProps) {
   const [countdownKey, setCountdownKey] = useState(0);
   const [wasFirstPlay, setWasFirstPlay] = useState(false);
   const completedRef = useRef(false);
+  const initializedRef = useRef(false);
   const recordResult = useProgressionStore((s) => s.recordResult);
   const modeHistory = useProgressionStore((s) => s.history[mode.id] ?? []);
   const markDailyCompleted = useDailyChallengeStore((s) => s.markCompleted);
+
+  // Set initial phase after mount to avoid hydration issues with persist stores
+  useEffect(() => {
+    if (initializedRef.current) return;
+    initializedRef.current = true;
+    if (needsInstruction) {
+      setPhase("instruction");
+    } else if (skipCountdown) {
+      setPhase("playing");
+    } else {
+      setPhase("countdown");
+    }
+  }, [needsInstruction, skipCountdown]);
 
   const handleInstructionDismiss = useCallback(() => {
     markPlayed(mode.id);
@@ -72,7 +84,6 @@ export default function GameShell({ mode, children }: GameShellProps) {
 
       if (isFirstPlay) setFirstGameComplete();
 
-      // Track if this is the very first play for this mode (for suppressing "new best")
       setWasFirstPlay(modeHistory.length === 0);
 
       setScore(score);
@@ -89,7 +100,6 @@ export default function GameShell({ mode, children }: GameShellProps) {
         setNewRankName(newRank.name);
       }
 
-      // Check daily challenge
       if (isDaily && dailyTarget) {
         const target = parseInt(dailyTarget, 10);
         if (isChallengeComplete(score, target, mode.scoreLowerIsBetter)) {
@@ -101,7 +111,7 @@ export default function GameShell({ mode, children }: GameShellProps) {
 
       setPhase("result");
     },
-    [mode, recordResult, isFirstPlay, setFirstGameComplete, isDaily, dailyTarget, markDailyCompleted]
+    [mode, recordResult, isFirstPlay, setFirstGameComplete, isDaily, dailyTarget, markDailyCompleted, modeHistory.length]
   );
 
   const handlePlayAgain = useCallback(() => {
@@ -125,8 +135,6 @@ export default function GameShell({ mode, children }: GameShellProps) {
 
   return (
     <div className="fixed inset-0 bg-space-900">
-      {/* Back button — always visible for zen, during play for others */}
-      {/* UX-06: Larger back button (min 44x44px tap target) */}
       {(phase === "playing" || mode.isZen) && (
         <button
           onClick={handleExit}
@@ -140,19 +148,16 @@ export default function GameShell({ mode, children }: GameShellProps) {
 
       {children({ onComplete: handleComplete, phase })}
 
-      {/* Instruction overlay */}
       {phase === "instruction" && (
         <ModeInstructionCard mode={mode} onDismiss={handleInstructionDismiss} />
       )}
 
-      {/* Countdown */}
       <AnimatePresence>
         {phase === "countdown" && (
           <CountdownOverlay key={countdownKey} onComplete={handleCountdownComplete} />
         )}
       </AnimatePresence>
 
-      {/* Result — not for zen mode */}
       {phase === "result" && !mode.isZen && (
         <ResultScreen
           mode={mode}

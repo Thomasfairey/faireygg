@@ -36,7 +36,7 @@ export default function Home() {
   const toggleSound = useSettingsStore((s) => s.toggleSound);
   const toggleHaptics = useSettingsStore((s) => s.toggleHaptics);
   const hasCompletedFirstGame = useOnboardingStore((s) => s.hasCompletedFirstGame);
-  const isCompletedToday = useDailyChallengeStore((s) => s.isCompletedToday);
+  const completedDates = useDailyChallengeStore((s) => s.completedDates);
   const dailyStreak = useDailyChallengeStore((s) => s.currentStreak);
 
   const rank = getRankForGames(totalGamesPlayed);
@@ -44,7 +44,8 @@ export default function Home() {
   const progress = getRankProgress(totalGamesPlayed);
 
   const daily = getDailyChallenge();
-  const dailyDone = hydrated && isCompletedToday();
+  const today = new Date().toLocaleDateString("en-CA");
+  const dailyDone = hydrated && completedDates.includes(today);
 
   // Zero-friction first play: redirect new users to Classic
   useEffect(() => {
