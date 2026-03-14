@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { audioManager } from "@/lib/audio/AudioManager";
 import { haptic } from "@/lib/haptics";
+import { useEffects } from "@/lib/hooks/GameEffectsContext";
 
 interface AimTrainerModeProps {
   onComplete: (score: number, details?: Record<string, number>) => void;
@@ -24,6 +25,7 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
   const hitRef = useRef(0);
   const timesRef = useRef<number[]>([]);
   const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const effects = useEffects();
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
   const phaseRef = useRef(phase);
@@ -82,8 +84,11 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
         setDisplayHits(hitRef.current);
         setDisplayAvg(Math.round(times.reduce((a, b) => a + b, 0) / times.length));
 
-        audioManager.tapSuccess();
+        audioManager.tapSuccessCombo(hitRef.current);
         haptic.light();
+        effects?.burst(e.clientX, e.clientY, "#ffaa00");
+        effects?.flash("success");
+        effects?.popup(e.clientX, e.clientY, `${reactionMs}ms`, reactionMs < 300 ? "#00ff88" : "#ffaa00");
 
         if (hitRef.current >= TOTAL_TARGETS) {
           const avg = Math.round(times.reduce((a, b) => a + b, 0) / times.length);
@@ -100,6 +105,7 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
         setMissCount(missRef.current);
         audioManager.tapFail();
         haptic.error();
+        effects?.flash("fail");
         setShake(true);
         if (shakeTimer.current) clearTimeout(shakeTimer.current);
         shakeTimer.current = setTimeout(() => setShake(false), 400);

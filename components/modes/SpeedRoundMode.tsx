@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { audioManager } from "@/lib/audio/AudioManager";
 import { haptic } from "@/lib/haptics";
+import { useEffects } from "@/lib/hooks/GameEffectsContext";
 
 interface SpeedRoundModeProps {
   onComplete: (score: number, details?: Record<string, number>) => void;
@@ -21,6 +22,7 @@ export default function SpeedRoundMode({ onComplete, phase }: SpeedRoundModeProp
   const currentTapRef = useRef(0);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
+  const effects = useEffects();
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
   const zoneRef = useRef<HTMLDivElement>(null);
@@ -62,8 +64,10 @@ export default function SpeedRoundMode({ onComplete, phase }: SpeedRoundModeProp
 
       currentTapRef.current += 1;
       setDisplayTap(currentTapRef.current);
-      audioManager.tapSuccess();
+      audioManager.tapSuccessCombo(currentTapRef.current);
       haptic.light();
+      effects?.burst(e.clientX, e.clientY, "#ff00e5");
+      effects?.flash("success");
 
       if (currentTapRef.current >= TOTAL_TAPS) {
         const totalMs = Math.round(now - startTime.current);

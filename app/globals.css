@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #030014;
+  --background: #0a0a0f;
   --foreground: #ededed;
 }
 
@@ -10,9 +10,9 @@
   --color-foreground: var(--foreground);
   --font-mono: var(--font-geist-mono);
 
-  --color-space-950: #010008;
-  --color-space-900: #030014;
-  --color-space-800: #0a0a2e;
+  --color-space-950: #050508;
+  --color-space-900: #0a0a0f;
+  --color-space-800: #0e0e2a;
   --color-space-700: #141452;
   --color-space-600: #1e1e6e;
 
@@ -42,6 +42,32 @@ body {
   position: fixed;
   width: 100%;
   height: 100%;
+}
+
+/* Scanline overlay for terminal/CRT aesthetic */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 0, 0, 0.03) 2px,
+    rgba(0, 0, 0, 0.03) 4px
+  );
+}
+
+/* Subtle vignette on edges */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  background: radial-gradient(ellipse at center, transparent 50%, rgba(0, 0, 0, 0.4) 100%);
 }
 
 @keyframes pulse-glow {

@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { audioManager } from "@/lib/audio/AudioManager";
 import { haptic } from "@/lib/haptics";
+import { useEffects } from "@/lib/hooks/GameEffectsContext";
 
 interface InhibitionModeProps {
   onComplete: (score: number) => void;
@@ -34,6 +35,7 @@ export default function InhibitionMode({ onComplete, phase }: InhibitionModeProp
   const readyAt = useRef(0);
   const completedRef = useRef(false);
   const tappedRef = useRef(false);
+  const effects = useEffects();
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
   const zoneRef = useRef<HTMLDivElement>(null);
@@ -129,6 +131,9 @@ export default function InhibitionMode({ onComplete, phase }: InhibitionModeProp
         setFeedback("correct");
         audioManager.inhibitionCorrect();
         haptic.light();
+        effects?.burst(e.clientX, e.clientY, "#00ff88");
+        effects?.flash("success");
+        effects?.popup(e.clientX, e.clientY, `+${points}`, "#00ff88");
       } else {
         // Tapped red — penalty
         scoreRef.current = Math.max(0, scoreRef.current - 300);
@@ -138,6 +143,8 @@ export default function InhibitionMode({ onComplete, phase }: InhibitionModeProp
         setTimeout(() => setShake(false), 400);
         audioManager.inhibitionWrong();
         haptic.error();
+        effects?.flash("fail");
+        effects?.popup(e.clientX, e.clientY, "-300", "#ff3355");
       }
 
       roundRef.current += 1;

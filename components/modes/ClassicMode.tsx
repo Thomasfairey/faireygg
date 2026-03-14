@@ -7,6 +7,7 @@ import { haptic } from "@/lib/haptics";
 import { useProgressionStore } from "@/lib/store/progressionStore";
 import { getClassicDifficulty } from "@/lib/game/adaptiveDifficulty";
 import { EMPTY_ARRAY } from "@/lib/store/stableDefaults";
+import { useEffects } from "@/lib/hooks/GameEffectsContext";
 
 type TapPhase = "waiting" | "ready" | "too-early";
 
@@ -22,6 +23,7 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
   const tapPhaseRef = useRef<TapPhase>("waiting");
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
+  const effects = useEffects();
   const history = useProgressionStore((s) => (s.history ?? {})["classic"] ?? EMPTY_ARRAY);
   const difficulty = getClassicDifficulty(history);
   const tensionStop = useRef<(() => void) | null>(null);
@@ -91,6 +93,7 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
         if (tensionStop.current) { tensionStop.current(); tensionStop.current = null; }
         audioManager.tapFail();
         haptic.error();
+        effects?.flash("fail");
         setShake(true);
         shakeTimer.current = setTimeout(() => setShake(false), 400);
         tapPhaseRef.current = "too-early";
@@ -102,6 +105,9 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
         completedRef.current = true;
         audioManager.tapSuccess();
         haptic.success();
+        effects?.burst(e.clientX, e.clientY, "#00f0ff");
+        effects?.flash("success");
+        if (ms < 250) effects?.popup(e.clientX, e.clientY, `${ms}ms!`, "#00ff88");
         onCompleteRef.current(ms);
       }
     };

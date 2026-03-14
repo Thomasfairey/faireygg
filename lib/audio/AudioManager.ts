@@ -83,14 +83,26 @@ class AudioManager {
   tapSuccess() {
     if (!this.isEnabled() || !this.ctx) return;
     this.ensureResumed();
-    // Bass thud
     this.osc(220, "sine", 0.1, 0.1, 0, 1800);
-    // Mid chime
     this.osc(660, "sine", 0.12, 0.07, 0.01);
-    // High sparkle
     this.osc(1320, "triangle", 0.08, 0.04, 0.02);
-    // Transient click
     this.noise(0.02, 0.04);
+    // Echo tail
+    this.osc(660, "sine", 0.08, 0.02, 0.06);
+  }
+
+  // Combo-escalating success: pitch rises with streak
+  tapSuccessCombo(streak: number) {
+    if (!this.isEnabled() || !this.ctx) return;
+    this.ensureResumed();
+    const pitchBoost = Math.min(streak, 10) * 40;
+    this.osc(220 + pitchBoost / 2, "sine", 0.1, 0.1, 0, 1800);
+    this.osc(660 + pitchBoost, "sine", 0.12, 0.07, 0.01);
+    this.osc(1320 + pitchBoost * 2, "triangle", 0.08, 0.04, 0.02);
+    this.noise(0.015, 0.05);
+    // Echo tail
+    this.osc(660 + pitchBoost, "sine", 0.08, 0.025, 0.05);
+    this.osc(1320 + pitchBoost * 2, "sine", 0.06, 0.015, 0.08);
   }
 
   tapFail() {

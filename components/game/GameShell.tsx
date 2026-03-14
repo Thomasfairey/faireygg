@@ -14,6 +14,11 @@ import CountdownOverlay from "./CountdownOverlay";
 import ResultScreen from "./ResultScreen";
 import ModeInstructionCard from "./ModeInstructionCard";
 import UsernamePrompt from "./UsernamePrompt";
+import ParticleBurst from "@/components/effects/ParticleBurst";
+import ScreenFlash from "@/components/effects/ScreenFlash";
+import ScorePopup from "@/components/effects/ScorePopup";
+import { useGameEffects } from "@/lib/hooks/useGameEffects";
+import { GameEffectsContext } from "@/lib/hooks/GameEffectsContext";
 
 type Phase = "instruction" | "countdown" | "playing" | "result" | "username-prompt";
 
@@ -51,6 +56,7 @@ export default function GameShell({ mode, children }: GameShellProps) {
   const setFirstGameComplete = useOnboardingStore((s) => s.setFirstGameComplete);
   const username = useUsernameStore((s) => s.username);
 
+  const effects = useGameEffects();
   const skipCountdown = mode.isZen;
   const needsInstruction = !playedModes.includes(mode.id);
 
@@ -198,7 +204,13 @@ export default function GameShell({ mode, children }: GameShellProps) {
   }, [phase, handleExit]);
 
   return (
+    <GameEffectsContext.Provider value={effects}>
     <div className="fixed inset-0 bg-space-900">
+      {/* Effects layers */}
+      <ParticleBurst particlesRef={effects.particlesRef} subscribe={effects.subscribe} />
+      <ScreenFlash flashRef={effects.flashRef} subscribe={effects.subscribe} />
+      <ScorePopup popupsRef={effects.popupsRef} subscribe={effects.subscribe} />
+
       {(phase === "playing" || phase === "countdown" || mode.isZen) && (
         <button
           onClick={handleBackTap}
@@ -271,5 +283,6 @@ export default function GameShell({ mode, children }: GameShellProps) {
         />
       )}
     </div>
+    </GameEffectsContext.Provider>
   );
 }

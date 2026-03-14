@@ -4,6 +4,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { motion } from "framer-motion";
 import { audioManager } from "@/lib/audio/AudioManager";
 import { haptic } from "@/lib/haptics";
+import { useEffects } from "@/lib/hooks/GameEffectsContext";
 
 interface ShrinkingTargetModeProps {
   onComplete: (score: number) => void;
@@ -26,6 +27,7 @@ export default function ShrinkingTargetMode({ onComplete, phase }: ShrinkingTarg
   const lastTimeRef = useRef(0);
   const hitsRef = useRef(0);
   const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const effects = useEffects();
   const completedRef = useRef(false);
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
@@ -103,10 +105,12 @@ export default function ShrinkingTargetMode({ onComplete, phase }: ShrinkingTarg
       speedRef.current = SHRINK_SPEED + hitsRef.current * SPEED_INCREMENT;
       setPosition(randomPosition());
 
-      audioManager.tapSuccess();
+      audioManager.tapSuccessCombo(hitsRef.current);
       haptic.light();
+      effects?.burst(e.clientX, e.clientY, "#00ff88");
+      effects?.flash("success");
     },
-    [phase, randomPosition]
+    [phase, randomPosition, effects]
   );
 
   const handleMiss = useCallback(
@@ -116,11 +120,12 @@ export default function ShrinkingTargetMode({ onComplete, phase }: ShrinkingTarg
 
       audioManager.tapFail();
       haptic.error();
+      effects?.flash("fail");
       setShake(true);
       if (shakeTimer.current) clearTimeout(shakeTimer.current);
       shakeTimer.current = setTimeout(() => setShake(false), 400);
     },
-    [phase]
+    [phase, effects]
   );
 
   if (phase !== "playing") return null;
