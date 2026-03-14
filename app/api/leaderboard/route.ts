@@ -145,23 +145,27 @@ export async function POST(req: NextRequest) {
     const member = `${sanitized}|${Date.now()}`;
     const redisScore = toRedisScore(score, mode);
 
-    // Atomic add + trim with timeout
-    await Promise.race([
-      (async () => {
-        await kv.zadd(key, { score: redisScore, member });
-        const totalEntries = await kv.zcard(key);
-        if (totalEntries > MAX_ENTRIES) {
-          await kv.zremrangebyrank(key, MAX_ENTRIES, -1);
-        }
-      })(),
-      new Promise<never>((_, reject) => setTimeout(() => reject(new Error("KV timeout")), 5000)),
-    ]);
+    // If KV is not configured, still return success without persisting
+    try {
+      await Promise.race([
+        (async () => {
+          await kv.zadd(key, { score: redisScore, member });
+          const totalEntries = await kv.zcard(key);
+          if (totalEntries > MAX_ENTRIES) {
+            await kv.zremrangebyrank(key, MAX_ENTRIES, -1);
+          }
+        })(),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error("KV timeout")), 5000)),
+      ]);
 
-    const rank = await kv.zrank(key, member);
-    const position = rank !== null ? rank + 1 : null;
-
-    return NextResponse.json({ position, totalEntries: Math.min(MAX_ENTRIES, 100) }, { headers: CORS_HEADERS });
+      const rank = await kv.zrank(key, member);
+      const position = rank !== null ? rank + 1 : null;
+      return NextResponse.json({ position, totalEntries: Math.min(MAX_ENTRIES, 100) }, { headers: CORS_HEADERS });
+    } catch {
+      // KV unavailable — return success without position (graceful degradation)
+      return NextResponse.json({ position: null, offline: true }, { headers: CORS_HEADERS });
+    }
   } catch {
-    return NextResponse.json({ error: "Server error" }, { status: 500, headers: CORS_HEADERS });
+    return NextResponse.json({ error: "Invalid request" }, { status: 400, headers: CORS_HEADERS });
   }
 }
