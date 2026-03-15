@@ -30,6 +30,7 @@ function log(test, ok, detail) {
     "/", "/stats", "/leaderboard",
     "/play/classic", "/play/speed-round", "/play/sequence",
     "/play/shrinking-target", "/play/aim-trainer", "/play/inhibition", "/play/zen",
+    "/play/daily-sync",
   ];
 
   for (const route of routes) {

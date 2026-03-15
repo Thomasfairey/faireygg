@@ -12,6 +12,7 @@ import { useSettingsStore } from "@/lib/store/settingsStore";
 import { useOnboardingStore } from "@/lib/store/onboardingStore";
 import { useDailyChallengeStore } from "@/lib/store/dailyChallengeStore";
 import { getDailyChallenge } from "@/lib/game/dailyChallenge";
+import { useDailySyncStore } from "@/lib/store/dailySyncStore";
 import { audioManager } from "@/lib/audio/AudioManager";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 import { haptic } from "@/lib/haptics";
@@ -39,13 +40,19 @@ export default function Home() {
   const hasCompletedFirstGame = useOnboardingStore((s) => s.hasCompletedFirstGame);
   const completedDates = useDailyChallengeStore((s) => s.completedDates ?? EMPTY_ARRAY);
   const dailyStreak = useDailyChallengeStore((s) => s.currentStreak);
+  const syncRecords = useDailySyncStore((s) => s.records ?? EMPTY_ARRAY);
+  const syncBest = useDailySyncStore((s) => s.bestSyncScore);
+  const syncStreak = useDailySyncStore((s) => s.currentStreak);
 
   const rank = getRankForGames(totalGamesPlayed);
   const nextRank = getNextRank(totalGamesPlayed);
   const progress = getRankProgress(totalGamesPlayed);
 
   const daily = hydrated ? getDailyChallenge() : null;
-  const dailyDone = hydrated && completedDates.includes(new Date().toLocaleDateString("en-CA"));
+  const today = hydrated ? new Date().toLocaleDateString("en-CA") : "";
+  const dailyDone = hydrated && completedDates.includes(today);
+  const syncDone = hydrated && syncRecords.some((r: { date: string }) => r.date === today);
+  const todaySyncRecord = hydrated ? syncRecords.find((r: { date: string }) => r.date === today) : null;
 
   // Zero-friction first play: redirect new users to Classic
   useEffect(() => {
@@ -173,6 +180,54 @@ export default function Home() {
                 </div>
                 {!dailyDone && (
                   <span className="text-[10px] font-bold uppercase tracking-wider opacity-30" style={{ color: daily.mode.color }}>Go →</span>
+                )}
+              </div>
+            </button>
+          </motion.div>
+        )}
+
+        {/* Daily Neural Sync */}
+        {hydrated && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="w-full max-w-sm mb-4"
+          >
+            <button
+              onClick={() => {
+                audioManager.uiClick();
+                haptic.light();
+                router.push("/play/daily-sync");
+              }}
+              className={`w-full rounded-2xl p-4 text-left relative overflow-hidden cursor-pointer transition-all ${syncDone ? "opacity-60" : ""}`}
+              style={{
+                background: syncDone
+                  ? "rgba(255,255,255,0.02)"
+                  : "linear-gradient(135deg, rgba(0,240,255,0.08), rgba(168,85,247,0.05), transparent)",
+                border: syncDone ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,240,255,0.15)",
+              }}
+            >
+              <div className="absolute top-0 left-0 right-0 h-[1px]" style={{ background: "linear-gradient(90deg, transparent, #00f0ff40, #a855f740, transparent)" }} />
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: "rgba(0,240,255,0.1)", border: "1px solid rgba(0,240,255,0.2)" }}>
+                  <span className="text-lg">{syncDone ? "✓" : "🧬"}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-white/25 uppercase tracking-widest">Daily Neural Sync</span>
+                    {syncStreak > 0 && <span className="text-[9px] text-neon-amber tabular-nums">🔥 {syncStreak}d</span>}
+                  </div>
+                  {syncDone && todaySyncRecord ? (
+                    <div className="text-sm font-bold mt-0.5 text-white/40">
+                      Synced: <span style={{ color: (todaySyncRecord as { syncScore: number }).syncScore >= 70 ? "#00ff88" : "#00f0ff" }}>{(todaySyncRecord as { syncScore: number }).syncScore}%</span>
+                    </div>
+                  ) : (
+                    <div className="text-sm font-bold mt-0.5 shimmer-text">4-mode gauntlet</div>
+                  )}
+                </div>
+                {!syncDone && (
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-neon-cyan/40">Sync →</span>
                 )}
               </div>
             </button>
