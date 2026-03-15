@@ -8,7 +8,10 @@ import { getRankForGames } from "@/lib/game/ranks";
 import { getLoreForRank } from "@/lib/game/lore";
 import { useProgressionStore } from "@/lib/store/progressionStore";
 import { shareResult } from "@/lib/share/generateShareCard";
+import { generateModeShareText, copyToClipboard } from "@/lib/share/textShare";
+import { usePlayStreakStore } from "@/lib/store/playStreakStore";
 import GlowButton from "@/components/ui/GlowButton";
+import Toast from "@/components/ui/Toast";
 import { audioManager } from "@/lib/audio/AudioManager";
 import { haptic } from "@/lib/haptics";
 
@@ -116,8 +119,15 @@ export default function ResultScreen({
     : getScoreLabel(score, mode.id);
 
   const [shareStatus, setShareStatus] = useState<string | null>(null);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const playStreak = usePlayStreakStore((s) => s.currentStreak);
 
-  const handleShare = async () => {
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 2500);
+  };
+
+  const handleShareImage = async () => {
     setShareStatus("...");
     const result = await shareResult({
       mode,
@@ -128,13 +138,31 @@ export default function ResultScreen({
       isNewBest: showNewBest,
     });
     if (result === "shared") {
-      setShareStatus("Shared!");
+      showToast("Shared!");
     } else if (result === "downloaded") {
-      setShareStatus("Saved!");
+      showToast("Image saved!");
     } else {
-      setShareStatus("Failed");
+      showToast("Share failed");
     }
-    setTimeout(() => setShareStatus(null), 2000);
+    setShareStatus(null);
+  };
+
+  const handleCopyText = async () => {
+    const text = generateModeShareText({
+      mode,
+      score,
+      isNewBest: showNewBest,
+      streak: playStreak,
+      rankName: rank.name,
+    });
+    const ok = await copyToClipboard(text);
+    if (ok) {
+      audioManager.tapSuccess();
+      haptic.success();
+      showToast("Copied to clipboard!");
+    } else {
+      showToast("Copy failed");
+    }
   };
 
   return (
@@ -255,13 +283,22 @@ export default function ResultScreen({
           <GlowButton onClick={onPlayAgain} color={mode.color} glowClass={mode.glowClass} size="lg" className="w-full">
             Play Again
           </GlowButton>
-          <button
-            onClick={handleShare}
-            className="text-white/30 text-sm py-2 cursor-pointer hover:text-white/50 transition-colors flex items-center justify-center gap-2"
-          >
-            <span>{shareStatus ?? "Share Result"}</span>
-            {!shareStatus && <span className="text-xs">↗</span>}
-          </button>
+
+          <div className="flex gap-2 w-full">
+            <button
+              onClick={handleCopyText}
+              className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white/40 border border-white/10 cursor-pointer hover:text-white/60 hover:bg-white/[0.04] transition-all flex items-center justify-center gap-1.5"
+            >
+              📋 Copy Text
+            </button>
+            <button
+              onClick={handleShareImage}
+              className="flex-1 py-2.5 rounded-xl text-xs font-bold text-white/40 border border-white/10 cursor-pointer hover:text-white/60 hover:bg-white/[0.04] transition-all flex items-center justify-center gap-1.5"
+            >
+              {shareStatus === "..." ? "..." : "📸 Share Image"}
+            </button>
+          </div>
+
           <button
             onClick={onExit}
             className="w-full py-3 rounded-xl text-sm font-bold text-white/40 border border-white/10 cursor-pointer hover:text-white/60 hover:bg-white/[0.03] transition-all"
@@ -270,6 +307,7 @@ export default function ResultScreen({
           </button>
         </motion.div>
       </motion.div>
+      <Toast message={toastMsg} />
     </div>
   );
 }

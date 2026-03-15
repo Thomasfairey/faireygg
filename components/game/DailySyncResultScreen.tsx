@@ -1,9 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { SyncSubScore, getSyncMessage } from "@/lib/game/scoring";
+import { generateSyncShareText, copyToClipboard } from "@/lib/share/textShare";
 import ProgressRing from "@/components/ui/ProgressRing";
 import GlowButton from "@/components/ui/GlowButton";
+import Toast from "@/components/ui/Toast";
+import { audioManager } from "@/lib/audio/AudioManager";
+import { haptic } from "@/lib/haptics";
 
 interface DailySyncResultScreenProps {
   syncScore: number;
@@ -29,6 +34,29 @@ export default function DailySyncResultScreen({
 }: DailySyncResultScreenProps) {
   const message = getSyncMessage(syncScore);
   const scoreColor = syncScore >= 80 ? "#00ff88" : syncScore >= 50 ? "#00f0ff" : "#ffaa00";
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 2500);
+  };
+
+  const handleCopyText = async () => {
+    const text = generateSyncShareText({
+      syncScore,
+      subScores,
+      streak,
+      isNewBest,
+    });
+    const ok = await copyToClipboard(text);
+    if (ok) {
+      audioManager.tapSuccess();
+      haptic.success();
+      showToast("Copied to clipboard!");
+    } else {
+      showToast("Copy failed");
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-space-900/95 backdrop-blur-lg overflow-y-auto">
@@ -129,11 +157,19 @@ export default function DailySyncResultScreen({
           transition={{ delay: 0.6 }}
           className="flex flex-col gap-3 w-full mt-2"
         >
+          <button
+            onClick={handleCopyText}
+            className="w-full py-3 rounded-xl text-sm font-bold text-neon-cyan/70 border border-neon-cyan/20 cursor-pointer hover:text-neon-cyan hover:bg-neon-cyan/5 transition-all flex items-center justify-center gap-2"
+          >
+            📋 Share Your Sync
+          </button>
+
           <GlowButton onClick={onExit} color={scoreColor} glowClass="box-glow-cyan" size="lg" className="w-full">
             Back to Menu
           </GlowButton>
         </motion.div>
       </motion.div>
+      <Toast message={toastMsg} />
     </div>
   );
 }
