@@ -9,6 +9,7 @@ import { useProgressionStore } from "@/lib/store/progressionStore";
 import { useOnboardingStore } from "@/lib/store/onboardingStore";
 import { useDailyChallengeStore } from "@/lib/store/dailyChallengeStore";
 import { useUsernameStore } from "@/lib/store/usernameStore";
+import { usePlayStreakStore } from "@/lib/store/playStreakStore";
 import { isChallengeComplete } from "@/lib/game/dailyChallenge";
 import CountdownOverlay from "./CountdownOverlay";
 import ResultScreen from "./ResultScreen";
@@ -55,6 +56,7 @@ export default function GameShell({ mode, children }: GameShellProps) {
   const markPlayed = useOnboardingStore((s) => s.markPlayed);
   const setFirstGameComplete = useOnboardingStore((s) => s.setFirstGameComplete);
   const username = useUsernameStore((s) => s.username);
+  const recordPlay = usePlayStreakStore((s) => s.recordPlay);
 
   const effects = useGameEffects();
   const skipCountdown = mode.isZen;
@@ -109,6 +111,7 @@ export default function GameShell({ mode, children }: GameShellProps) {
       if (isFirstPlay) setFirstGameComplete();
       setWasFirstPlay(modeHistoryLength === 0);
       setScore(score);
+      recordPlay(); // Track daily play streak
 
       const result: GameResult = {
         mode: mode.id,

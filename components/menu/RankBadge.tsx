@@ -4,15 +4,6 @@ import { useProgressionStore } from "@/lib/store/progressionStore";
 import { getRankForGames, getNextRank, getRankProgress } from "@/lib/game/ranks";
 import ProgressRing from "@/components/ui/ProgressRing";
 
-const RANK_ICONS: Record<string, string> = {
-  cadet: "🛰️",
-  "co-pilot": "🪐",
-  pilot: "🚀",
-  commander: "🌟",
-  "test-pilot": "🛸",
-  lightspeed: "💫",
-};
-
 export default function RankBadge() {
   const totalGamesPlayed = useProgressionStore((s) => s.totalGamesPlayed);
   const rank = getRankForGames(totalGamesPlayed);
@@ -22,7 +13,7 @@ export default function RankBadge() {
   return (
     <div className="flex items-center gap-4">
       <ProgressRing progress={progress} size={64} strokeWidth={3} color={rank.color}>
-        <span className="text-2xl">{RANK_ICONS[rank.id] ?? "🛰️"}</span>
+        <span className="text-2xl">{rank.icon}</span>
       </ProgressRing>
       <div>
         <div className={`font-bold text-lg ${rank.glowClass}`} style={{ color: rank.color }}>

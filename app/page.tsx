@@ -13,20 +13,13 @@ import { useOnboardingStore } from "@/lib/store/onboardingStore";
 import { useDailyChallengeStore } from "@/lib/store/dailyChallengeStore";
 import { getDailyChallenge } from "@/lib/game/dailyChallenge";
 import { useDailySyncStore } from "@/lib/store/dailySyncStore";
+import { usePlayStreakStore } from "@/lib/store/playStreakStore";
+import { getUnlockedThemes, THEMES } from "@/lib/game/ranks";
 import { audioManager } from "@/lib/audio/AudioManager";
 import { useHydrated } from "@/lib/hooks/useHydrated";
 import { haptic } from "@/lib/haptics";
 import ProgressRing from "@/components/ui/ProgressRing";
 import { EMPTY_OBJECT, EMPTY_ARRAY } from "@/lib/store/stableDefaults";
-
-const RANK_ICONS: Record<string, string> = {
-  cadet: "🛰️",
-  "co-pilot": "🪐",
-  pilot: "🚀",
-  commander: "🌟",
-  "test-pilot": "🛸",
-  lightspeed: "💫",
-};
 
 export default function Home() {
   const hydrated = useHydrated();
@@ -43,6 +36,9 @@ export default function Home() {
   const syncRecords = useDailySyncStore((s) => s.records ?? EMPTY_ARRAY);
   const syncBest = useDailySyncStore((s) => s.bestSyncScore);
   const syncStreak = useDailySyncStore((s) => s.currentStreak);
+  const playStreak = usePlayStreakStore((s) => s.currentStreak);
+  const activeTheme = useSettingsStore((s) => s.activeTheme);
+  const setTheme = useSettingsStore((s) => s.setTheme);
 
   const rank = getRankForGames(totalGamesPlayed);
   const nextRank = getNextRank(totalGamesPlayed);
@@ -95,6 +91,19 @@ export default function Home() {
           </div>
           <h1 className="text-5xl font-bold shimmer-text tracking-tight">NEURAL PULSE</h1>
           <p className="text-[10px] text-white/40 mt-1.5 uppercase tracking-[0.2em] sm:tracking-[0.3em]">Reflex Training</p>
+          {/* Daily play streak */}
+          {hydrated && playStreak > 0 && (
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.3, type: "spring", stiffness: 400, damping: 20 }}
+              className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-neon-amber/10 border border-neon-amber/20"
+            >
+              <span className="text-base">🔥</span>
+              <span className="text-sm font-bold text-neon-amber tabular-nums">{playStreak}</span>
+              <span className="text-[9px] text-neon-amber/50 uppercase">day streak</span>
+            </motion.div>
+          )}
         </motion.div>
 
         {/* Rank Card */}
@@ -108,7 +117,7 @@ export default function Home() {
             <div className="absolute inset-0 opacity-[0.03]" style={{ background: `radial-gradient(ellipse at top right, ${rank.color}, transparent 60%)` }} />
             <div className="relative flex items-center gap-4">
               <ProgressRing progress={hydrated ? progress : 0} size={56} strokeWidth={3} color={rank.color}>
-                <span className="text-xl">{RANK_ICONS[rank.id] ?? "🛰️"}</span>
+                <span className="text-xl">{rank.icon}</span>
               </ProgressRing>
               <div className="flex-1">
                 <div className="flex items-center gap-2">
@@ -315,7 +324,34 @@ export default function Home() {
           </button>
         </motion.div>
 
-        <div className="mt-4 text-[9px] text-white/10 tracking-wider">v2.0 · NEURAL PULSE</div>
+        {/* Theme selector */}
+        {hydrated && (() => {
+          const unlocked = getUnlockedThemes(totalGamesPlayed);
+          if (unlocked.length <= 1) return null;
+          return (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="mt-4 w-full max-w-sm">
+              <div className="text-[9px] text-white/20 uppercase tracking-widest text-center mb-2">Theme</div>
+              <div className="flex gap-2 justify-center flex-wrap">
+                {unlocked.map((theme) => (
+                  <button
+                    key={theme.id}
+                    onClick={() => { setTheme(theme.id); audioManager.uiClick(); }}
+                    className={`w-8 h-8 rounded-full cursor-pointer transition-all border-2 ${
+                      activeTheme === theme.id ? "border-white/60 scale-110" : "border-white/10 hover:border-white/30"
+                    }`}
+                    style={{
+                      background: `linear-gradient(135deg, ${theme.accent}, ${theme.accent2})`,
+                      boxShadow: activeTheme === theme.id ? `0 0 12px ${theme.accent}60` : "none",
+                    }}
+                    title={theme.name}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          );
+        })()}
+
+        <div className="mt-4 text-[9px] text-white/10 tracking-wider">v3.0 · NEURAL PULSE</div>
       </div>
     </div>
   );
