@@ -118,19 +118,27 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
 
   if (phase !== "playing") return null;
 
+  // HIGH FIX: Make green state dramatically visible
   const bgColor =
     tapPhase === "waiting"
       ? "bg-red-900/40"
       : tapPhase === "ready"
-        ? "bg-green-900/30"
+        ? "bg-green-600/30"
         : "bg-orange-900/30";
 
   const borderColor =
     tapPhase === "waiting"
       ? "border-red-500/30"
       : tapPhase === "ready"
-        ? "border-neon-green/50"
+        ? "border-neon-green"
         : "border-orange-500/30";
+
+  const fullScreenBg =
+    tapPhase === "waiting"
+      ? ""
+      : tapPhase === "ready"
+        ? "bg-green-950/40"
+        : "";
 
   return (
     <motion.div
@@ -139,7 +147,7 @@ export default function ClassicMode({ onComplete, phase }: ClassicModeProps) {
           ? { x: [0, -12, 12, -8, 8, -4, 4, 0], transition: { duration: 0.4 } }
           : { x: 0 }
       }
-      className="fixed inset-0 flex items-center justify-center"
+      className={`fixed inset-0 flex items-center justify-center transition-colors duration-200 ${fullScreenBg}`}
     >
       <div
         ref={zoneRef}

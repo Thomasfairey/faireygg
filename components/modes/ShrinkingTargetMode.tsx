@@ -32,13 +32,13 @@ export default function ShrinkingTargetMode({ onComplete, phase }: ShrinkingTarg
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
-  // ISSUE-001: Exclude top-left safe zone (back button area)
+  // Exclude top-left safe zone (back button) and top-right (HUD)
   const randomPosition = useCallback(() => {
     let x: number, y: number;
     do {
-      x = 12 + Math.random() * 76;
-      y = 18 + Math.random() * 55;
-    } while (x < 20 && y < 20); // avoid back button zone
+      x = 15 + Math.random() * 70;
+      y = 22 + Math.random() * 50;
+    } while (x < 25 && y < 25); // generous back button exclusion
     return { x, y };
   }, []);
 

@@ -32,13 +32,16 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
   phaseRef.current = phase;
   const zoneRef = useRef<HTMLDivElement>(null);
 
-  // #3: Tighten spawn range to prevent off-screen targets (56px target on small screens)
+  // Tighten spawn range: avoid edges and back button zone
   const randomTarget = useCallback(
-    (key: number) => ({
-      x: 12 + Math.random() * 76,
-      y: 18 + Math.random() * 54,
-      key,
-    }),
+    (key: number) => {
+      let x: number, y: number;
+      do {
+        x = 15 + Math.random() * 70;
+        y = 20 + Math.random() * 52;
+      } while (x < 22 && y < 22); // avoid back button
+      return { x, y, key };
+    },
     []
   );
 
@@ -136,29 +139,24 @@ export default function AimTrainerMode({ onComplete, phase }: AimTrainerModeProp
               {displayHits}/{TOTAL_TARGETS}
             </div>
           </div>
-          {displayAvg !== null && (
-            <div className="text-center">
-              <div className="text-[10px] text-white/30 uppercase tracking-widest">Avg</div>
-              <div className="text-xl font-bold text-neon-amber tabular-nums">
-                {displayAvg}ms
-              </div>
+          <div className="text-center">
+            <div className="text-[10px] text-white/30 uppercase tracking-widest">Avg</div>
+            <div className="text-xl font-bold text-neon-amber tabular-nums">
+              {displayAvg !== null ? `${displayAvg}ms` : "—"}
             </div>
-          )}
-          {/* UX-11: Miss counter + accuracy */}
+          </div>
           <div className="text-center">
             <div className="text-[10px] text-white/30 uppercase tracking-widest">Misses</div>
             <div className={`text-xl font-bold tabular-nums ${missCount > 0 ? "text-neon-red" : "text-white/30"}`}>
               {missCount}
             </div>
           </div>
-          {displayHits > 0 && (
-            <div className="text-center">
-              <div className="text-[10px] text-white/30 uppercase tracking-widest">Accuracy</div>
-              <div className="text-xl font-bold text-white/50 tabular-nums">
-                {Math.round((displayHits / (displayHits + missCount)) * 100)}%
-              </div>
+          <div className="text-center">
+            <div className="text-[10px] text-white/30 uppercase tracking-widest">Accuracy</div>
+            <div className="text-xl font-bold text-white/50 tabular-nums">
+              {displayHits > 0 ? `${Math.round((displayHits / (displayHits + missCount)) * 100)}%` : "—"}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Progress bar */}

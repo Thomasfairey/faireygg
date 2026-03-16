@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { MODES } from "@/lib/game/modes";
@@ -50,16 +50,58 @@ export default function Home() {
   const syncDone = hydrated && syncRecords.some((r: { date: string }) => r.date === today);
   const todaySyncRecord = hydrated ? syncRecords.find((r: { date: string }) => r.date === today) : null;
 
-  // Zero-friction first play: redirect new users to Classic
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  // Show welcome splash for new users instead of instant redirect
   useEffect(() => {
     if (hydrated && !hasCompletedFirstGame && totalGamesPlayed === 0) {
-      router.replace("/play/classic?first=true");
+      setShowWelcome(true);
     }
-  }, [hydrated, hasCompletedFirstGame, totalGamesPlayed, router]);
+  }, [hydrated, hasCompletedFirstGame, totalGamesPlayed]);
 
-  // Don't render menu if redirecting
-  if (hydrated && !hasCompletedFirstGame && totalGamesPlayed === 0) {
-    return <div className="fixed inset-0 bg-space-900" />;
+  // Welcome splash for first-time users
+  if (showWelcome) {
+    return (
+      <div className="fixed inset-0 bg-space-900 flex flex-col items-center justify-center px-8 gap-6">
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 20 }}
+          className="text-center"
+        >
+          <h1 className="text-4xl font-bold shimmer-text tracking-tight mb-2">NEURAL PULSE</h1>
+          <p className="text-white/40 text-sm">Deep space reflex training</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="text-center max-w-xs"
+        >
+          <p className="text-white/30 text-xs leading-relaxed">
+            7 game modes. Daily challenges. Track your reflexes and climb the ranks.
+          </p>
+        </motion.div>
+        <motion.button
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => router.push("/play/classic?first=true")}
+          className="px-8 py-4 rounded-2xl text-base font-bold text-neon-cyan border-2 border-neon-cyan/40 bg-neon-cyan/10 cursor-pointer hover:bg-neon-cyan/20 transition-all box-glow-cyan"
+        >
+          Begin Calibration
+        </motion.button>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.9 }}
+          className="text-[9px] text-white/15"
+        >
+          Your first test: reaction speed
+        </motion.div>
+      </div>
+    );
   }
 
   return (
@@ -90,7 +132,7 @@ export default function Home() {
             />
           </div>
           <h1 className="text-5xl font-bold shimmer-text tracking-tight">NEURAL PULSE</h1>
-          <p className="text-[10px] text-white/40 mt-1.5 uppercase tracking-[0.2em] sm:tracking-[0.3em]">Reflex Training</p>
+          <p className="text-[11px] text-white/50 mt-1.5 uppercase tracking-[0.2em] sm:tracking-[0.3em]">Reflex Training</p>
           {/* Daily play streak */}
           {hydrated && playStreak > 0 && (
             <motion.div
@@ -288,7 +330,9 @@ export default function Home() {
                   {hydrated && best !== null && !mode.isZen ? (
                     <div className="text-right flex-shrink-0">
                       <div className="text-[9px] text-white/20 uppercase tracking-wider">Best</div>
-                      <div className="font-bold tabular-nums text-sm" style={{ color: mode.color }}>{getScoreLabel(best, mode.id)}</div>
+                      <div className="font-bold tabular-nums text-sm" style={{ color: mode.color }}>
+                        {mode.id === "speed-round" ? `${(best / 1000).toFixed(1)}s` : getScoreLabel(best, mode.id)}
+                      </div>
                     </div>
                   ) : !mode.isZen ? (
                     <div className="text-[10px] font-bold uppercase tracking-wider flex-shrink-0 opacity-30" style={{ color: mode.color }}>Play →</div>

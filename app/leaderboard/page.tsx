@@ -43,31 +43,39 @@ export default function LeaderboardPage() {
   const [view, setView] = useState<"global" | "personal">("global");
   const [globalEntries, setGlobalEntries] = useState<GlobalEntry[]>([]);
   const [loading, setLoading] = useState(false);
+  const [fetchKey, setFetchKey] = useState(0); // Force re-fetch
   const leaderboards = useProgressionStore((s) => s.leaderboards ?? EMPTY_OBJ);
   const username = useUsernameStore((s) => s.username);
 
-  const mode = MODES.find((m) => m.id === activeMode);
-  if (!mode) return null;
-
-  // Fetch global leaderboard
+  // CRITICAL FIX: Fetch on every mode/view change — always re-fetch
   useEffect(() => {
     if (view !== "global") return;
+    let cancelled = false;
     setLoading(true);
+    setGlobalEntries([]); // Clear stale data immediately
+
     fetch(`/api/leaderboard?mode=${activeMode}`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
       .then((data) => {
-        setGlobalEntries(validateEntries(data));
-        setLoading(false);
+        if (!cancelled) {
+          setGlobalEntries(validateEntries(data));
+          setLoading(false);
+        }
       })
       .catch(() => {
-        setGlobalEntries([]);
-        setLoading(false);
+        if (!cancelled) {
+          setGlobalEntries([]);
+          setLoading(false);
+        }
       });
-  }, [activeMode, view]);
 
+    return () => { cancelled = true; };
+  }, [activeMode, view, fetchKey]);
+
+  const mode = SCORED_MODES.find((m) => m.id === activeMode) ?? SCORED_MODES[0];
   const rawPersonal = leaderboards[activeMode];
   const personalEntries = Array.isArray(rawPersonal) ? rawPersonal : [];
 
@@ -114,15 +122,18 @@ export default function LeaderboardPage() {
           </button>
         </div>
 
-        {/* Mode tabs */}
+        {/* Mode tabs with scroll hint */}
         <div className="relative w-full max-w-sm mb-4">
-          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-space-900 to-transparent z-10 pointer-events-none" />
-          <div className="flex gap-1 w-full overflow-x-auto pb-2 scrollbar-hide">
+          <div className="absolute right-0 top-0 bottom-2 w-10 bg-gradient-to-l from-space-900 via-space-900/80 to-transparent z-10 pointer-events-none" />
+          <div className="flex gap-1.5 w-full overflow-x-auto pb-2 scrollbar-hide">
             {SCORED_MODES.map((m) => (
               <button
                 key={m.id}
-                onClick={() => setActiveMode(m.id)}
-                className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer transition-all ${
+                onClick={() => {
+                  setActiveMode(m.id);
+                  setFetchKey((k) => k + 1);
+                }}
+                className={`flex-shrink-0 px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider cursor-pointer transition-all min-h-[36px] ${
                   activeMode === m.id
                     ? "border-2 text-white"
                     : "border border-white/10 text-white/30 hover:text-white/50"
@@ -170,7 +181,7 @@ export default function LeaderboardPage() {
                 !loading &&
                 globalEntries.map((entry, i) => (
                   <motion.div
-                    key={`${entry.username}-${i}`}
+                    key={`${entry.username}-${entry.score}-${i}`}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.03 }}
@@ -189,9 +200,7 @@ export default function LeaderboardPage() {
                       {i + 1}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div
-                        className={`font-bold text-sm truncate ${entry.username === username ? "text-neon-cyan" : "text-white/70"}`}
-                      >
+                      <div className={`font-bold text-sm truncate ${entry.username === username ? "text-neon-cyan" : "text-white/70"}`}>
                         {sanitizeDisplayName(entry.username)}
                         {entry.username === username && (
                           <span className="text-[9px] text-neon-cyan/50 ml-1.5">you</span>
